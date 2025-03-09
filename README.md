@@ -1,6 +1,6 @@
 <h1 align="center"> ✦ REAL-MY-SQL-STUDY ✦</h1>
 
-<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=30&duration=5000&pause=500&color=F7C32D&width=600&lines=Welcome+to+real-my-sql-study!+🚀" />
+<div align="center"> <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=30&duration=5000&pause=2000&color=F7C32D&width=600&lines=⭐WELCOME+TO+REAL-MY-SQL-STUDY⭐"/></div>
 
 <h2 align="center">✦ RULE ✦</h2>
 
@@ -188,6 +188,5 @@ graph TD;
     </tr>
   </table>
 </div>
-
 
 
