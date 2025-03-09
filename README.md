@@ -16,34 +16,49 @@
 }
 ```
 
+```mermaid
+graph TD;
+    A[☕ 커피 현황] -->|0 coffees| B[김대영]
+    A -->|0 coffees| C[임수빈]
+    A -->|0 coffees| D[전수민]
+    A -->|3 coffees| E[정민호]
+```
+
+
+
+
 <h2 align="center">✦ 정리 현황 ✦</h2>
 
-<table style="width:100%; min-width:100%; text-align:center; border-collapse: collapse;">
-  <tr>
-    <th style="width:10%;">장</th>
-    <th style="width:22.5%;">김대영</th>
-    <th style="width:22.5%;">임수빈</th>
-    <th style="width:22.5%;">전수민</th>
-    <th style="width:22.5%;">정민호</th>
-  </tr>
-  <tr>
-    <td>3.1</td> <td></td> <td></td> <td></td> <td></td>
-  </tr>
-  <tr>
-    <td>3.2</td> <td></td> <td></td> <td></td> <td></td>
-  </tr>
-  <tr>
-    <td>3.3</td> <td></td> <td></td> <td></td> <td></td>
-  </tr>
-  <tr>
-    <td>3.4</td> <td></td> <td></td> <td></td> <td></td>
-  </tr>
-  <tr>
-    <td>3.5</td> <td></td> <td></td> <td></td> <td></td>
-  </tr>
-  <tr>
-    <td>3.6</td> <td></td> <td></td> <td></td> <td></td>
-  </tr>
-</table>
+<div style="width:100%; overflow-x:auto;">
+  <table style="width:100%; text-align:center;">
+    <tr>
+      <th style="width:10%;">장</th>
+      <th style="width:22.5%;">김대영</th>
+      <th style="width:22.5%;">임수빈</th>
+      <th style="width:22.5%;">전수민</th>
+      <th style="width:22.5%;">정민호</th>
+    </tr>
+    <tr>
+      <td>3.1</td> <td></td> <td></td> <td></td> <td></td>
+    </tr>
+    <tr>
+      <td>3.2</td> <td></td> <td></td> <td></td> <td></td>
+    </tr>
+    <tr>
+      <td>3.3</td> <td></td> <td></td> <td></td> <td></td>
+    </tr>
+    <tr>
+      <td>3.4</td> <td></td> <td></td> <td></td> <td></td>
+    </tr>
+    <tr>
+      <td>3.5</td> <td></td> <td></td> <td></td> <td></td>
+    </tr>
+    <tr>
+      <td>3.6</td> <td></td> <td></td> <td></td> <td></td>
+    </tr>
+  </table>
+</div>
+
+
 
 
