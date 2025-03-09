@@ -2,7 +2,7 @@
 
 <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=30&duration=5000&pause=500&color=F7C32D&width=600&lines=Welcome+to+real-my-sql-study!+🚀" />
 
-<h2 align="center"> RULE</h2>
+<h2 align="center">✦ RULE ✦</h2>
 
 ```json
 {
@@ -16,9 +16,9 @@
 }
 ```
 
-<h2 align="center"> 정리 현황 </h2>
+<h2 align="center">✦ 정리 현황 ✦</h2>
 
-<table style="width:100%; text-align:center;">
+<table style="width:100%; min-width:100%; text-align:center; border-collapse: collapse;">
   <tr>
     <th style="width:10%;">장</th>
     <th style="width:22.5%;">김대영</th>
@@ -45,4 +45,5 @@
     <td>3.6</td> <td></td> <td></td> <td></td> <td></td>
   </tr>
 </table>
+
 
