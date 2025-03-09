@@ -40,72 +40,154 @@ graph TD;
     </tr>
     <tr>
         <td>3.1</td> 
-        <td><a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/kdozlo/kdozlo/03_%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.1_%EC%82%AC%EC%9A%A9%EC%9E%90%20%EC%8B%9D%EB%B3%84.md"><img src="https://img.shields.io/badge/SUMMARY LINK-8B5DFF?style=for-the-badge&logo=github"></img></a>
+        <td><a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/kdozlo/kdozlo/03_%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.1_%EC%82%AC%EC%9A%A9%EC%9E%90%20%EC%8B%9D%EB%B3%84.md"><img src="https://img.shields.io/badge/사용자 식별-8B5DFF?style=for-the-badge&logo=github"></img></a>
       </td> 
-    <td><a href="https://github.com/RealMySQL-Gang/real-my-sql-study/tree/limsubinn/limsubinn/03.%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.1%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EC%8B%9D%EB%B3%84"><img src="https://img.shields.io/badge/SUMMARY LINK-FF8F00?style=for-the-badge&logo=github"></img></a></td> 
+    <td><a href="https://github.com/RealMySQL-Gang/real-my-sql-study/tree/limsubinn/limsubinn/03.%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.1%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EC%8B%9D%EB%B3%84"><img src="https://img.shields.io/badge/사용자 식별-FF8F00?style=for-the-badge&logo=github"></img></a></td> 
     <td>
-<a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/soomin/soomin/Chapter%203%20Role%20%26%20Privilege/3.1)%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EC%8B%9D%EB%B3%84%20.md"><img src="https://img.shields.io/badge/SUMMARY LINK-4CCD99?style=for-the-badge&logo=github"></img></a>
+<a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/soomin/soomin/Chapter%203%20Role%20%26%20Privilege/3.1)%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EC%8B%9D%EB%B3%84%20.md"><img src="https://img.shields.io/badge/사용자 식별-4CCD99?style=for-the-badge&logo=github"></img></a>
 </td> 
-    <td></td>
+    <td>
+	<img src="https://img.shields.io/badge/던킨 도너츠 삼-D6C0B3?style=for-the-badge&logo=coffeescript&logoColor=854836">
+	</td>
     </tr>
     <tr>
       <td>3.2</td> 
         <td>
-            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/kdozlo/kdozlo/03_%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.2_%EC%82%AC%EC%9A%A9%EC%9E%90%20%EA%B3%84%EC%A0%95%20%EA%B4%80%EB%A6%AC.md"><img src="https://img.shields.io/badge/SUMMARY LINK-8B5DFF?style=for-the-badge&logo=github">
+            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/kdozlo/kdozlo/03_%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.2_%EC%82%AC%EC%9A%A9%EC%9E%90%20%EA%B3%84%EC%A0%95%20%EA%B4%80%EB%A6%AC.md"><img src="https://img.shields.io/badge/사용자 계정 관리-8B5DFF?style=for-the-badge&logo=github">
             </td> 
         <td>
-            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/tree/limsubinn/limsubinn/03.%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.2%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EA%B3%84%EC%A0%95%20%EA%B4%80%EB%A6%AC"><img src="https://img.shields.io/badge/SUMMARY LINK-FF8F00?style=for-the-badge&logo=github"></img>
+            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/tree/limsubinn/limsubinn/03.%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.2%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EA%B3%84%EC%A0%95%20%EA%B4%80%EB%A6%AC"><img src="https://img.shields.io/badge/사용자 계정 관리-FF8F00?style=for-the-badge&logo=github"></img>
         </td> 
         <td>
-            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/soomin/soomin/Chapter%203%20Role%20%26%20Privilege/3.2)%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EA%B3%84%EC%A0%95%20%EA%B4%80%EB%A6%AC.md"><img src="https://img.shields.io/badge/SUMMARY LINK-4CCD99?style=for-the-badge&logo=github"></img></a>
+            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/soomin/soomin/Chapter%203%20Role%20%26%20Privilege/3.2)%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EA%B3%84%EC%A0%95%20%EA%B4%80%EB%A6%AC.md"><img src="https://img.shields.io/badge/사용자 계정 관리-4CCD99?style=for-the-badge&logo=github"></img></a>
         </td> 
         <td>
+            <img src="https://img.shields.io/badge/던킨 도너츠 삼-D6C0B3?style=for-the-badge&logo=coffeescript&logoColor=854836">
         </td>
     </tr>
     <tr>
       <td>3.3</td> 
         <td>
-        <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/kdozlo/kdozlo/03_%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.3_%EB%B9%84%EB%B0%80%EB%B2%88%ED%98%B8%20%EA%B4%80%EB%A6%AC.md"><img src="https://img.shields.io/badge/SUMMARY LINK-8B5DFF?style=for-the-badge&logo=github">
+        <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/kdozlo/kdozlo/03_%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.3_%EB%B9%84%EB%B0%80%EB%B2%88%ED%98%B8%20%EA%B4%80%EB%A6%AC.md"><img src="https://img.shields.io/badge/비밀번호 관리-8B5DFF?style=for-the-badge&logo=github">
             </td> 
         <td>
-            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/tree/limsubinn/limsubinn/03.%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.3%20%EB%B9%84%EB%B0%80%EB%B2%88%ED%98%B8%20%EA%B4%80%EB%A6%AC"><img src="https://img.shields.io/badge/SUMMARY LINK-FF8F00?style=for-the-badge&logo=github"></img>
+            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/tree/limsubinn/limsubinn/03.%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.3%20%EB%B9%84%EB%B0%80%EB%B2%88%ED%98%B8%20%EA%B4%80%EB%A6%AC"><img src="https://img.shields.io/badge/비밀번호 관리-FF8F00?style=for-the-badge&logo=github"></img>
         </td> 
         <td>
-            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/soomin/soomin/Chapter%203%20Role%20%26%20Privilege/3.3)%20%EB%B9%84%EB%B0%80%EB%B2%88%ED%98%B8%20%EA%B4%80%EB%A6%AC.md"><img src="https://img.shields.io/badge/SUMMARY LINK-4CCD99?style=for-the-badge&logo=github"></img></a>
+            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/soomin/soomin/Chapter%203%20Role%20%26%20Privilege/3.3)%20%EB%B9%84%EB%B0%80%EB%B2%88%ED%98%B8%20%EA%B4%80%EB%A6%AC.md"><img src="https://img.shields.io/badge/비밀번호 관리-4CCD99?style=for-the-badge&logo=github"></img></a>
         </td> 
         <td>
+            <img src="https://img.shields.io/badge/던킨 도너츠 삼-D6C0B3?style=for-the-badge&logo=coffeescript&logoColor=854836">
         </td>
     </tr>
     <tr>
       <td>3.4</td> 
         <td>
-            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/tree/limsubinn/limsubinn/03.%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.4%20%EA%B6%8C%ED%95%9C(Privilege)"><img src="https://img.shields.io/badge/SUMMARY LINK-8B5DFF?style=for-the-badge&logo=github">
+            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/tree/limsubinn/limsubinn/03.%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.4%20%EA%B6%8C%ED%95%9C(Privilege)"><img src="https://img.shields.io/badge/권한-8B5DFF?style=for-the-badge&logo=github">
                 </td> 
         <td>
-            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/tree/limsubinn/limsubinn/03.%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.1%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EC%8B%9D%EB%B3%84"><img src="https://img.shields.io/badge/SUMMARY LINK-FF8F00?style=for-the-badge&logo=github"></img>
+            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/tree/limsubinn/limsubinn/03.%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.1%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EC%8B%9D%EB%B3%84"><img src="https://img.shields.io/badge/권한-FF8F00?style=for-the-badge&logo=github"></img>
         </td> 
         <td>
-            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/soomin/soomin/Chapter%203%20Role%20%26%20Privilege/3.4)%20%EA%B6%8C%ED%95%9C.md"><img src="https://img.shields.io/badge/SUMMARY LINK-4CCD99?style=for-the-badge&logo=github"></img></a>
+            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/soomin/soomin/Chapter%203%20Role%20%26%20Privilege/3.4)%20%EA%B6%8C%ED%95%9C.md"><img src="https://img.shields.io/badge/권한-4CCD99?style=for-the-badge&logo=github"></img></a>
         </td> 
         <td>
+            <img src="https://img.shields.io/badge/던킨 도너츠 삼-D6C0B3?style=for-the-badge&logo=coffeescript&logoColor=854836">
         </td>
     </tr>
     <tr>
       <td>3.5</td> 
-        <td><a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/kdozlo/kdozlo/03_%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.5_%EC%97%AD%ED%95%A0.md"><img src="https://img.shields.io/badge/SUMMARY LINK-8B5DFF?style=for-the-badge&logo=github">
+        <td><a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/kdozlo/kdozlo/03_%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.5_%EC%97%AD%ED%95%A0.md"><img src="https://img.shields.io/badge/역할-8B5DFF?style=for-the-badge&logo=github">
             </td> 
         <td>
-            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/tree/limsubinn/limsubinn/03.%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.5%20%EC%97%AD%ED%95%A0(Role)"><img src="https://img.shields.io/badge/SUMMARY LINK-FF8F00?style=for-the-badge&logo=github"></img>
+            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/tree/limsubinn/limsubinn/03.%20%EC%82%AC%EC%9A%A9%EC%9E%90%20%EB%B0%8F%20%EA%B6%8C%ED%95%9C/3.5%20%EC%97%AD%ED%95%A0(Role)"><img src="https://img.shields.io/badge/역할-FF8F00?style=for-the-badge&logo=github"></img>
         </td> 
         <td>
-            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/soomin/soomin/Chapter%203%20Role%20%26%20Privilege/3.5)%20%EC%97%AD%ED%95%A0(Role).md"><img src="https://img.shields.io/badge/SUMMARY LINK-4CCD99?style=for-the-badge&logo=github"></img></a>
+            <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/soomin/soomin/Chapter%203%20Role%20%26%20Privilege/3.5)%20%EC%97%AD%ED%95%A0(Role).md"><img src="https://img.shields.io/badge/역할-4CCD99?style=for-the-badge&logo=github"></img></a>
         </td> 
         <td>
+            <img src="https://img.shields.io/badge/던킨 도너츠 삼-D6C0B3?style=for-the-badge&logo=coffeescript&logoColor=854836">
         </td>
     </tr>
     <tr>
-      <td>4.1</td> <td></td> <td></td> <td></td> <td></td>
+      <td>4.1.1</td>
+      <td>
+        </td> 
+      <td>
+        </td>
+      <td>
+        </td>
+      <td>
+        </td>
+    </tr>
+    <tr>
+      <td>4.1.2</td>
+      <td>
+        </td> 
+      <td>
+        </td>
+      <td>
+        </td>
+      <td>
+        </td>
+    </tr>
+    <tr>
+      <td>4.1.3</td>
+      <td>
+        </td> 
+      <td>
+        </td>
+      <td>
+        </td>
+      <td>
+        </td>
+    </tr>
+    <tr>
+      <td>4.1.4</td>
+      <td>
+        </td> 
+      <td>
+        </td>
+      <td>
+        </td>
+      <td>
+        </td>
+    </tr>
+    <tr>
+      <td>4.1.5</td>
+      <td>
+        </td> 
+      <td>
+        </td>
+      <td>
+        </td>
+      <td>
+        </td>
+    </tr>
+    <tr>
+      <td>4.1.6</td>
+      <td>
+        </td> 
+      <td>
+        </td>
+      <td>
+        </td>
+      <td>
+        </td>
+    </tr>
+    <tr>
+      <td>4.1.7 ~ 10</td>
+      <td>
+        </td> 
+      <td>
+        </td>
+      <td>
+        </td>
+      <td>
+        </td>
     </tr>
   </table>
 </div>
+
+
 
