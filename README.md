@@ -1,6 +1,10 @@
-<h1 align="center"> ✦ REAL-MY-SQL-STUDY ✦</h1>
+<div align="center">
+	<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=30&duration=5000&pause=2000&color=F7C32D&width=600&lines=⭐WELCOME+TO+REAL-MY-SQL-STUDY⭐"/>
+	<br/>
+	<img src="https://github.com/user-attachments/assets/038e920f-fbef-47bb-ab53-064c352bcac6" width = 100%/>
+</div>
 
-<div align="center"> <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=30&duration=5000&pause=2000&color=F7C32D&width=600&lines=⭐WELCOME+TO+REAL-MY-SQL-STUDY⭐"/></div>
+
 
 <h2 align="center">✦ RULE ✦</h2>
 
@@ -29,7 +33,7 @@ graph TD;
 
 <h2 align="center">✦ 정리 현황 ✦</h2>
 
-<div style="width:100%; overflow-x:auto;">
+<div style="width:100%; overflow-x:auto;" align = 'center'>
   <table style="width:100%; text-align:center;">
     <tr>
       <th style="width:10%;">장</th>
