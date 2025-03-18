@@ -20,7 +20,7 @@
 graph TD;
     A[☕ 커피 현황] -->|0 coffees| B[김대영]
     A -->|0 coffees| C[임수빈]
-    A -->|0 coffees| D[전수민]
+    A -->|3 coffees| D[전수민]
     A -->|3 coffees| E[정민호]
 ```
 
@@ -110,25 +110,29 @@ graph TD;
         </td>
     </tr>
     <tr>
-      <td>4.1.1</td>
+      <td>4.1</td>
       <td>
         </td> 
       <td>
         </td>
       <td>
+                      <img src="https://img.shields.io/badge/자허블 삼-D6C0B3?style=for-the-badge&logo=coffeescript&logoColor=854836">
         </td>
       <td>
+                     <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/soomin/soomin/Chapter%203%20Role%20%26%20Privilege/3.5)%20%EC%97%AD%ED%95%A0(Role).md"><img src="https://img.shields.io/badge/엔진 아키텍처-0F6292?style=for-the-badge&logo=github"></img>
         </td>
     </tr>
     <tr>
-      <td>4.1.2</td>
+      <td>4.2</td>
       <td>
         </td> 
       <td>
         </td>
       <td>
+                                <img src="https://img.shields.io/badge/자허블 삼-D6C0B3?style=for-the-badge&logo=coffeescript&logoColor=854836">
         </td>
       <td>
+           <a href="https://github.com/RealMySQL-Gang/real-my-sql-study/blob/soomin/soomin/Chapter%203%20Role%20%26%20Privilege/3.5)%20%EC%97%AD%ED%95%A0(Role).md"><img src="https://img.shields.io/badge/스토리지 엔진 아키텍처-0F6292?style=for-the-badge&logo=github"></img>
         </td>
     </tr>
     <tr>
@@ -188,5 +192,6 @@ graph TD;
     </tr>
   </table>
 </div>
+
 
 
