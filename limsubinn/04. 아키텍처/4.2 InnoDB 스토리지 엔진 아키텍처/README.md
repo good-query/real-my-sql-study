@@ -118,7 +118,9 @@ InnoDB 데이터 파일은 기본적으로 MySQL 서버가 시작될 때 항상 
 
 <br>
 
-**2️⃣ 버퍼 풀의 구조** <br>
+**2️⃣ 버퍼 풀의 구조** 
+<br>
+
 InnoDB 스토리지 엔진은 버퍼 풀의 메모리 공간을 페이지 크기(`innodb_page_size`)의 조각으로 쪼개어 InnoDB 스토리지 엔진이 데이터를 필요로 할 때 해당 데이터 페이지를 읽어서 각 조각에 저장한다. 버퍼 풀의 페이지 크기 조각을 관리하기 위해 3개의 자료 구조를 관리한다.
 
 1. **LRU**(Least Recently Used) 리스트: 디스크로부터 한 번 읽어온 페이지를 최대한 오랫동안 유지해서 디스크 읽기를 최소화 <br>
@@ -159,7 +161,9 @@ InnoDB 스토리지 엔진은 버퍼 풀의 메모리 공간을 페이지 크기
   
 <br>
 
-**3️⃣ 버퍼 풀과 리두 로그** <br>
+**3️⃣ 버퍼 풀과 리두 로그** 
+<br>
+
 InnoDB 버퍼 풀은 데이터베이스 서버의 성능 향상을 위해 데이터 캐시와 쓰기 버퍼링이라는 두 가지 용도가 있다. <br>
 이때 버퍼 풀의 메모리 공간을 늘리는 것은 데이터 캐시 기능을 향상시키는 것이고, <br>
 쓰기 버퍼링 기능까지 향상시키려면 InnoDB 버퍼 풀과 리두 로그와의 관계를 이해해야 한다. 
@@ -167,6 +171,209 @@ InnoDB 버퍼 풀은 데이터베이스 서버의 성능 향상을 위해 데이
 ![image](https://github.com/user-attachments/assets/25422882-13e7-432a-bfe3-1f3a94629a65) <br>
 
 - InnoDB 버퍼 풀은 클린 페이지(디스크에서 읽은 상태로 전혀 변경되지 않음)와 더티 페이지(변경된 데이터를 가짐)를 가지고 있다.
+- 더티페이지는 디스크와 데이터 상태가 다르기 때문에 언젠가는 디스크로 기록되어야 한다. 하지만 무한정 버퍼 풀에 머무를 수는 없다.
+- InnoDB 스토리지 엔진은 전체 리두 로그 파일에서 재사용 가능한 공간과 불가능한 공간을 구분해서 관리한다.
+  재사용 불가능한 공간을 활성 리두 로그(Active Redo Log)라고 한다. (그림에서 화살표를 가진 엔트리들)
 - 리두 로그 파일의 공간은 계속 순환되면서 재사용되고, 매번 기록될 때마다 로그 포지션은 계속 증가된 값인 LSN(Log Sequence Number)을 갖게 된다.
-- InnoDB 스토리지 엔진은 주기적으로 체크포인트 이벤트를 발생시켜 리두 로그와 버퍼 풀의 더티 페이지를 디스크로 동기화한다.
-- InnoDB 버퍼 풀의 더티 페이지는 특정 리두 로그 엔트리와 관계를 가지고, 체크포인트가 발생하면 체크포인트 LSN보다 작은 리두 로그 엔트리와 관련된 더티 페이지는 모두 디스크로 동기화되어야 한다.
+- InnoDB 스토리지 엔진은 주기적으로 체크포인트 이벤트를 발생시켜 리두 로그와 버퍼 풀의 더티 페이지를 디스크로 동기화하는데,
+  이렇게 발생한 체크포인트 중 가장 최근 체크포인트 지점의 LSN이 활성 리두 로그 공간의 시작점이 된다.
+- 가장 최근 체크포인트의 LSN과 마지막 리두 로그 엔트리의 LSN의 차이를 체크포인트 에이지(Checkpoint Age)라고 한다.
+  즉, 체크포인트 에이지는 활성 리두 로그 공간의 크기를 일컫는다.
+- InnoDB 버퍼 풀의 더티 페이지는 특정 리두 로그 엔트리와 관계를 가지고,
+  체크포인트가 발생하면 체크포인트 LSN보다 작은 리두 로그 엔트리와 관련된 더티 페이지는 모두 디스크로 동기화되어야 한다.
+
+```
+e.g
+
+1. InnoDB 버퍼 풀 100GB, 리두 로그 파일의 전체 크기 100MB
+=> 리두 로그 파일의 크기가 100MB이기 때문에 체크포인트 에이지도 최대 100MB 허용.
+   평균 리두 로그 엔트리가 4KB라면 25600개(100MB/4KB) 정도의 더티 페이지만 버퍼 풀에 보관 가능.
+   데이터 페이지가 16KB라면 허용 가능한 더티 페이지의 크기는 400MB(25600*16KB).
+   따라서 버퍼 풀의 크기가 매우 크지만 쓰기 버퍼링을 위한 효과는 거의 못 보는 상황.
+
+2. InnoDB 버퍼 풀 100MB, 리두 로그 파일의 전체 크기 100GB
+=> 리두 로그 파일의 크기가 100GB이기 떄문에 체크포인트 에이지는 최대 100GB 허용.
+   1번과 같은 방식으로 계산하면 400GB의 더티 페이지를 가질 수 있지만,
+   버퍼 풀의 크기가 100MB이기 때문에 최대 허용 가능한 더티 페이지는 100MB.
+
+둘 다 좋지 않은 설정이다.
+
+처음부터 리두 로그 파일의 크기를 적절히 선택하기 어렵다면
+버퍼 풀의 크기가 100GB 이하의 MySQL 서버에서는 리두 로그 파일의 전체 크기를 대략 5~10GB 수준으로 선택하고
+필요할 때마다 조금씩 늘려가면서 최적값을 선택하자.
+```
+
+<br>
+
+**4️⃣ 버퍼 풀 플러시(Buffer Pool Flush)**
+<br>
+
+InnoDB 스토리지 엔진은 버퍼 풀에서 아직 디스크로 기록되지 않은 더티 페이지들을 성능상의 악영향 없이 디스크에 동기화하기 위해 2개의 플러시 기능을 백그라운드로 실행한다.
+
+1. **플러시 리스트(Flush_list) 플러시**
+   <br>
+   
+   InnoDB 버퍼 풀의 더티 페이지를 디스크로 동기화하기 위해 InnoDB 스토리지 엔진은 주기적으로 플러시 리스트 플러시 함수를 호출해서
+   플러시 리스트에서 오래전에 변경된 데이터 페이지를 순서대로 디스크에 동기화하는 작업을 수행한다.
+
+   - `innodb_page_cleaners`: 클리너 스레드(더티 페이지를 디스크로 동기화하는 스레드)의 개수를 조정
+   - `innodb_max_dirty_pages_pct_lwn`: 일정 수준 이상의 더티 페이지가 발생하면 조금씩 더티 페이지를 디스크로 기록
+   - `innodb_max_dirty_pages_pct`: 더티 페이지의 비율 조정
+   - `innodb_io_capacity`: 일반적인 상황에서 디스크가 적절히 처리할 수 있는 수준의 값
+   - `innodb_io_capacity_max`: 디스크가 최대의 성능을 발휘할 때 어느 정도의 디스크 읽고 쓰기가 가능한지 설정
+   - `innodb_flush_neighbors`: 더티 페이지를 디스크에 기록할 때 디스크에서 근접한 페이지 중 더티 페이지가 있다면
+                               InnoDB 스토리지 엔진이 함께 묶어서 디스크로 기록하게 해주는 기능을 활성화할지 결정
+   - `innodb_adaptive_flushing`: 어댑티브 플러시(Adaptive flush) 기능 ON/OFF. 기본값은 ON <br>
+     💡 데이터 변경이 많아져 버퍼 풀에서 디스크로 써야 할 페이지가 많아지면, InnoDB가 이를 감지하고 플러시 비율을 자동 조정
+   - `innodb_adaptive_flushing_lwm`: 어댑티브 플러시 알고리즘이 작동하는 활성 리두 로그 공간의 값 기준. 기본값은 10%
+
+2. **LRU 리스트(LRU_list) 플러시**
+   <br>
+
+   InnoDB 스토리지 엔진은 LRU 리스트에서 사용 빈도가 낮은 데이터 페이지들을 제거해서 새로운 페이지들을 읽어올 공간을 만들어야 하는데,
+   이를 위해 LRU 리스트 플러시 함수가 사용된다.
+
+   - InnoDB 스토리지 엔진은 LRU 리스트의 끝부분부터 시작해서 최대 `innodb_lru_scan_depth`에 설정된 개수만큼의 페이지들을 스캔한다.
+   - 스캔하면서 더티 페이지는 디스크에 동기화하고, 클린 페이지는 즉시 프리(Free) 리스트로 페이지를 옮긴다.
+   - InnoDB 버퍼 풀 인스턴스별로 스캔한다.
+
+<br>
+
+**5️⃣ 버퍼 풀 상태 백업 및 복구**
+<br>
+
+워밍업(Warming Up): 디스크의 데이터가 버퍼 풀에 적재되어 있는 상태 <br>
+버퍼 풀이 잘 워밍업된 상태에서는 그렇지 않은 경우보다 몇십 배의 쿼리 처리 속도를 보이는 것이 일반적이다.
+
+MySQL 서버를 재시작해야 하는 경우 MySQL 서버를 셧다운하기 전에 `innodb_dump_now`를 `ON`으로 설정하여 현재 InnoDB 버퍼 풀의 상태를 백업할 수 있다.
+그리고 MySQL 서버를 다시 시작하면 `innodb_buffer_pool_load_now`를 `ON`으로 설정하여 백업된 버퍼 풀의 상태를 다시 복구할 수 있다.
+
+- InnoDB 버퍼 풀의 백업은 데이터 디렉터리에 `ib_buffer_pool`이라는 이름의 파일로 생성되는데,
+  InnoDB 스토리지 엔진이 버퍼 풀의 LRU 리스트에서 적재된 데이터 페이지의 메타 정보만 가져와서 저장한다.
+  따라서 버퍼 풀의 백업은 매우 빠르지만 복구하는 과정은 상당한 시간이 걸릴 수도 있다.
+- 버퍼 풀을 다시 복구하는 과정이 어느 정도 진행됐는지 확인
+  ```sql
+  mysql> SHOW STATUS LIKE 'Innodb_buffer_pool_dump_status'\G
+  ```
+  💡 참고 <br>
+  ![image](https://github.com/user-attachments/assets/a46af9d4-ee29-4b11-bc63-af303dd89219)
+- `innodb_buffer_pool_load_abort`를 `ON`으로 설정하여 버퍼 풀 적재 작업을 중간에 멈출 수 있다.
+- 버퍼 풀의 백업과 복구를 자동화하려면 `innodb_buffer_pool_dump_at_shutdown`과 `innodb_buffer_pool_load_at_startup` 설정을
+  MySQL 서버의 설정 파일에 넣어두면 된다.
+
+<br>
+
+**6️⃣ 버퍼 풀의 적재 내용 확인**
+<br>
+
+MySQL 5.6부터 MySQL 서버의 `information_schema` 데이터베이스의 `innodb_buffer_page` 테이블을 이용해 <br>
+InnoDB 버퍼 풀의 메모리에 어떤 테이블의 페이지들이 적재되어 있는지 확인할 수 있었다.
+
+MySQL 8.0에서는 InnoDB 버퍼 풀이 큰 경우 이 테이블 조회가 상당히 큰 부하를 일으키면서 서비스 쿼리가 느려지는 문제를 해결하기 위해 <br>
+`information_schema` 데이터베이스에 `innodb_cached_indexes` 테이블이 새로 추가됐다. <br>
+이 테이블을 이용하면 테이블의 인덱스별로 데이터 페이지가 얼마나 InnoDB 버퍼 풀에 적재되어 있는지 확인할 수 있다. 
+<br>
+
+```sql
+mysql> SELECT
+         it.name table_name,
+         ii.name index_name,
+         ici.n_cached_pages n_cached_pages
+       FROM information_schema.innodb_tables it
+         INNER JOIN information_schema.innodb_indexes ii ON ii.table_id it.table_id
+         INNER JOIN information_schema.innodb_cached_indexes ici ON ici.index_id = ii.index_id
+       WHERE it.name = CONCAT('employees', '/', 'employees');
+```
+
+<br>
+
+### 4.2.8 Double Write Buffer
+InnoDB 엔진에서는 페이지가 일부만 기록되는 현상(파셜 페이지 or 톤 페이지)을 막기 위해 Double-Write 기법을 이용한다. <br>
+DoubleWrite 기능을 사용할지 여부는 `innodb_doublewrite` 시스템 변수로 제어할 수 있다.
+
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/bd61e976-78a6-4001-b687-8cbbda112b13"> <br>
+
+'A' ~ 'E'까지의 더티 페이지를 디스크로 플러시한다고 가정해보자. <br>
+InnoDB 스토리지 엔진은 실제 데이터 파일에 변경 내용을 기록하기 전에 'A' ~ 'E' 더티 페이지를 우선 묶어서 <br>
+한 번의 디스크 쓰기로 시스템 테이블스페이스의 DoubleWrite 버퍼에 기록한다. <br>
+그리고 각 더티 페이지를 파일의 적당한 위치에 하나씩 랜덤으로 쓰기를 실행한다. <br>
+
+실제 데이터 파일에 'A' ~ 'E' 더티 페이지가 정상적으로 기록되면 DoubleWrite 버퍼 공간에 기록된 변경 내용은 더이상 필요가 없어진다. <br>
+InnoDB 스토리지 엔진은 재시작될 때 항상 DoubleWrite 버퍼의 내용과 데이터 파일의 페이지들을 모두 비교해서 <br>
+다른 내용을 담고 있는 페이지가 있으면 DoubleWrite 버퍼의 내용을 데이터 파일의 페이지로 복사한다. 
+
+<br>
+
+### 4.2.9 언두 로그
+InnoDB 스토리지 엔진은 트랜잭션과 격리 수준을 보장하기 위해 DML(INSERT, UPDATE, DELETE)로 변경되기 이전 버전의 데이터를 별도로 백업한다.
+이렇게 백업된 데이터를 **언두 로그(Undo Log)** 라고 한다.
+
+- 트랜잭션 보장
+- 격리 수준 보장
+
+<br>
+
+**1️⃣ 언두 로그 모니터링**
+<br>
+
+MySQL 5.5까지는 한 번 늘어난 언두 로그의 사용 공간을 다시 줄일 수 없었다. <br>
+하지만 언두 로그가 늘어나면 디스크 사용량뿐만 아니라 매번 백업할 때도 그만큼 더 복사를 해야 하는 문제점이 발생한다. <br>
+
+MySQL 5.7부터 언두 로그 공간의 문제점이 해결되었다. <br>
+MySQL 8.0에서는 언두 로그를 돌아가면서 순차적으로 사용해 디스크 공간을 줄이는 것도 가능하며, <br>
+때로는 MySQL 서버가 필요한 시점에 사용 공간을 자동으로 줄여 주기도 한다. <br>
+
+하지만 여전히 서비스 중인 MySQL 서버에서 활성 상태의 트랜잭션이 장시간 유지되는 것은 성능상 좋지 않다. <br>
+그래서 MySQL 서버의 언두 로그가 얼마나 증가했는지 항상 모니터링하는 것이 좋다. <br>
+
+```sql
+# MySQL 서버의 모든 버전에서 사용 가능한 명령
+mysql> SHOW ENGINE INNODB STATUS \G
+```
+![image](https://github.com/user-attachments/assets/428d6a87-13eb-427c-b055-bf9a6126b18a)
+
+```sql
+# MySQL 8.0 버전에서 사용 가능한 명령
+mysql> SELECT count
+       FROM information_schema.innodb_metrics
+       WHERE SUBSYSTEM = 'transaction' AND NAME = 'trx_rseg_history_len';
+```
+![image](https://github.com/user-attachments/assets/dc593413-271e-4851-8a2b-1e500cd748a5)
+
+<br>
+
+**2️⃣ 언두 테이블스페이스 관리**
+<br>
+
+언두 로그가 저장되는 공간을 언두 테이블스페이스(Undo Tablespace)라고 한다. <br>
+
+MySQL 5.6 이전에서는 언두 로그가 모두 시스템 테이블스페이스(ibdata.ib)에 저장됐다. <br>
+MySQL 5.6부터는 `innodb_undo_tablespaces` 시스템 변수가 도입됐고, <br>
+해당 변수를 2보다 큰 값으로 설정하면 별도의 언두 로그 파일을 사용했다. (0은 여전히 시스템 테이블스페이스 사용) <br>
+MySQL 8.0부터는 해당 시스템 변수가 Deprecated, 언두 로그는 항상 시스템 테이블스페이스 외부의 별도 로그 파일에 기록되도록 개선됐다. <br>
+
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/daf173c9-edbd-47cf-bedd-bf7c21b89234"> <br>
+
+하나의 언두 테이블스페이스는 1개 이상 128개 이하의 롤백 세그먼트를 가지며, 롤백 세그먼트는 1개 이상의 언두 슬롯을 가진다. <br>
+하나의 롤백 세그먼트는 InnoDB의 페이지 크기를 16바이트로 나눈 값의 개수만큼의 언두 슬롯을 가진다. <br>
+
+하나의 트랜잭션은 INSERT, UPDATE, DELETE 문장의 특성에 따라 최대 4개까지 언두 슬롯을 사용한다. <br>
+일반적으로는 트랜잭션이 임시 테이블을 사용하지 않으므로 하나의 트랜잭션이 대략 2개 정도의 언두 슬롯을 필요로 한다고 가정하면 된다. <br>
+그래서 최대 동시 처리 가능한 트랜잭션의 개수는 다음 수식으로 예측해볼 수 있다. <br>
+
+```
+최대 동시 트랜잭션 수 = (InnoDB 페이지 크기) / 16 * (롤백 세그먼트 개수) * (언두 테이블스페이스 개수)
+```
+
+<br>
+
+언두 로그 슬롯이 부족한 경우에는 트랜잭션을 시작할 수 없는 심각한 문제가 발생한다. <br>
+언두 로그 관련 시스템 변수를 변경할 때 적절히 필요한 동시 트랜잭션 개수에 맞게 <br>
+언두 테이블스페이스와 롤백 세그먼트의 개수를 설정해야 한다. <br>
+
+MySQL 8.0부터는 `CREATE UNDO TABLESPACE`, `DROP TABLESPACE` 같은 명령으로 <br>
+새로운 언두 테이블스페이스를 동적으로 추가하고 삭제할 수 있다. <br>
+
+언두 테이블스페이스 공간을 필요한 만큼만 남기고 운영체제로 반납하는 것을 'Undo tablespace truncate'라고 한다. <br>
+자동 모드: MySQL이 필요에 따라 undo tablespace를 자동으로 잘라내어 디스크 공간을 회수한다. <br>
+수동 모드: 관리자가 `ALTER UNDO TABLESPACE ... TRUNCATE;` 명령으로 직접 undo tablespace를 잘라낸다.
