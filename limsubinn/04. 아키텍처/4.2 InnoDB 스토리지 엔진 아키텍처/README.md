@@ -282,7 +282,7 @@ mysql> SELECT
        FROM information_schema.innodb_tables it
          INNER JOIN information_schema.innodb_indexes ii ON ii.table_id it.table_id
          INNER JOIN information_schema.innodb_cached_indexes ici ON ici.index_id = ii.index_id
-       WHERE it.name = CONCAT('employees', '/', 'employees');
+       WHERE it.name = CONCAT(schema_name, '/', table_name);
 ```
 
 <br>
