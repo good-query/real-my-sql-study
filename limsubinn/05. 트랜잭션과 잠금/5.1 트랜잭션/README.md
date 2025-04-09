@@ -6,11 +6,17 @@
 <br>
 
 테스트용 테이블을 생성하고 각 테이블에 레코드를 1건씩 저장한다. <br>
-![image](https://github.com/user-attachments/assets/7ca2fbe0-815b-4bef-a814-cb14a32e3e9a) <br>
+
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/452e3f38-8d45-483c-aff3-6eafe2bfb331" />
+<img width="603" alt="image" src="https://github.com/user-attachments/assets/b2b92287-d638-4c08-b91d-9e18fd18529d" />
+
 이후 AUTO-COMMIT 모드에서 중복된 레코드를 삽입해보자. <br>
-![image](https://github.com/user-attachments/assets/02a8f536-55ca-4be9-a6be-f3b2d9cada46) <br>
+
+<img width="485" alt="image" src="https://github.com/user-attachments/assets/a50d3e05-e1f4-4101-8edf-f6968c67466e" />
+
 두 쿼리 모두 오류가 발생했지만 테이블 조회 결과는 다르다. <br>
-![image](https://github.com/user-attachments/assets/15911270-580b-4907-bc09-551a6dce67af) <br>
+
+<img width="236" alt="image" src="https://github.com/user-attachments/assets/570d86fa-30b3-4052-8cd0-c616736d6c90" />
 
 <br>
 
