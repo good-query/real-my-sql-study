@@ -147,7 +147,7 @@ mysql_thread2> INSERT INTO access_log_new SELECT * FROM access_log WHERE id>=100
 mysql_thread3> INSERT INTO access_log_new SELECT * FROM access_log WHERE id>=20000 AND id<30000;
 mysql_thread4> INSERT INTO access_log_new SELECT * FROM access_log WHERE id>=30000 AND id<40000;
 
-# 트랜잭션을 autocommit으로 실행 (BEGIN이나 START TRANSACTION으로 실행하면 안 됨)
+# 트랜잭션을 autocommit 비활성화하여 실행 (BEGIN이나 START TRANSACTION으로 실행하면 안 됨)
 mysql> SET autocommit = 0;
 
 # 작업 대상 테이블 2개에 대해 테이블 쓰기 락을 획득
