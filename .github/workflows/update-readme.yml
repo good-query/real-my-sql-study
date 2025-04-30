@@ -1,0 +1,36 @@
+name: Update README with folder tree
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1' # 매주 월요일 00:00
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install tree
+        run: sudo apt-get install tree
+
+      - name: Generate folder tree
+        run: |
+          echo "## 📁 Folder Structure" > FOLDER_TREE.md
+          tree -d -L 2 real-mysql >> FOLDER_TREE.md
+
+      - name: Merge with main README
+        run: |
+          awk '/## 📁 Folder Structure/ {exit} {print}' real-mysql/README.md > TEMP_README.md
+          cat TEMP_README.md FOLDER_TREE.md > real-mysql/README.md
+
+      - name: Commit changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add real-mysql/README.md
+          git commit -m "Update folder structure in README [bot]" || echo "No changes to commit"
+          git push
