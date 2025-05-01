@@ -34,7 +34,6 @@ jobs:
             -path './.github' -prune -o \
             -path './README_TREE.md' -prune -o \
             -path './FOLDER_TREE.md' -prune -o \
-            -name 'README.md' -prune -o \
             -type f -name "*.md" -print \
           | sort \
           | while read -r filepath; do
