@@ -70,9 +70,13 @@ jobs:
       - name: Get PR number
         id: pr
         run: |
-          echo "PR_NUMBER=$(gh pr list --state open --head update-folder-tree --json number -q '.[0].number')" >> "$GITHUB_OUTPUT"
+          echo "🔍 현재 열린 PR 리스트:"
+          gh pr list --state open --head update-folder-tree
+          PR_NUMBER=$(gh pr list --state open --head update-folder-tree --json number -q '.[0].number')
+          echo "PR_NUMBER=$PR_NUMBER" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
   
       - name: Auto-merge PR
         if: steps.pr.outputs.PR_NUMBER != ''
