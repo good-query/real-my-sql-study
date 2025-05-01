@@ -7,6 +7,9 @@ on:
   schedule:
     - cron: '0 0 * * 1' # 매주 월요일 00:00
 
+permissions:
+  contents: write 
+
 jobs:
   update-readme:
     runs-on: ubuntu-latest
