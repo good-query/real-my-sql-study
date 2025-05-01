@@ -113,8 +113,7 @@ jobs:
             --reviewer limsubinn \
             --reviewer kdozlo \
             --reviewer dalcheonroadhead \
-            --label "AUTO-UPDATE 🤖" \
-            --label "FOLDER-TREE"
+            --label "AUTO-UPDATE 🤖" 
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   
