@@ -1,40 +1,81 @@
-name: Update README with folder tree
+name: 정기적 폴더 구조 최신화 git - action
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 1' # 매주 월요일 00:00
+    - cron: '0 0 * * 1'  # 매주 월요일 00:00 업데이트
 
 permissions:
-  contents: write 
+  contents: write
+  pull-requests: write
 
 jobs:
   update-readme:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout main branch
         uses: actions/checkout@v3
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install tree
+        run: sudo apt-get update && sudo apt-get install -y tree
+
+      - name: Configure Git
         run: |
-          sudo apt-get update && sudo apt-get install -y tree
-      
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Generate folder tree
         run: |
           echo "## 📁 Folder Structure" > FOLDER_TREE.md
           tree -d -L 2 . >> FOLDER_TREE.md
 
-      - name: Merge with main README
+      - name: Update README.md between markers
         run: |
-          awk '/## 📁 Folder Structure/ {exit} {print}' README.md > TEMP_README.md
-          cat TEMP_README.md FOLDER_TREE.md > README.md
+          START="<!--Tree Start-->"
+          END="<!--Tree End-->"
+          BEFORE=$(awk "/$START/ {exit} {print}" README.md)
+          AFTER=$(awk "/$END/ {found=1} found" README.md | tail -n +2)
+          {
+            echo "$BEFORE"
+            echo "$START"
+            echo '```'
+            cat FOLDER_TREE.md
+            echo '```'
+            echo "$END"
+            echo "$AFTER"
+          } > README.md
 
-      - name: Commit changes
+      - name: Create dynamic PR title
+        id: pr_title
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          YEAR=$(date +%Y)
+          MONTH=$(date +%-m)
+          DAY=$(date +%-d)
+          FIRST_DAY_WEEKDAY=$(date -d "$YEAR-$MONTH-01" +%u)
+          WEEK_NUM=$(( (DAY + FIRST_DAY_WEEKDAY - 1) / 7 + 1 ))
+          TITLE="📁 Update folder structure - ${MONTH}월 ${WEEK_NUM}주차"
+          echo "TITLE=$TITLE" >> $GITHUB_OUTPUT
+
+      - name: Create update branch and push
+        run: |
+          git checkout -b update-folder-tree
           git add README.md
-          git commit -m "Update folder structure in README [bot]" || echo "No changes to commit"
-          git push
+          git commit -m "📁 Auto-update: folder tree"
+          git push -u origin update-folder-tree
+
+      - name: Create Pull Request and Auto-Merge
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: ${{ steps.pr_title.outputs.TITLE }}
+          body: "자동 생성된 폴더 구조를 반영합니다. 병합 후 README가 최신 상태로 유지됩니다."
+          branch: update-folder-tree
+          base: main
+          delete-branch: true
+          commit-message: "📁 Auto-update: folder tree"
+          merge: true
+          merge-method: squash
