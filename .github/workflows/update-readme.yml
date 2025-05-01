@@ -26,27 +26,24 @@ jobs:
           
           # 트리 문자열을 먼저 변수에 담는다 (HEREDOC 사용)
           TREE_CONTENT=$(find . -type f -name "*.md" \
-            | grep -vE '^\.\/(\.github|\.git|README\.md|FOLDER_TREE\.md)$' \
+            | grep -vE "^\.\/(\.github|FOLDER_TREE\.md)" \
             | sort \
             | while read -r path; do
                 depth=$(echo "$path" | awk -F"/" '{print NF-1}')
                 indent=""
-                for ((i=1; i<=depth; i++)); do indent="$indent  "; done
-
+                for ((i=1; i<depth; i++)); do
+                  indent="$indent  "
+                done
                 filename=$(basename "$path")
-                link=$(echo "$path" | sed 's|^\./||' | jq -sRr @uri)
-                echo "${indent}- [${filename}](${link})"
+                cleanpath=$(echo "$path" | sed 's|^\./||' | sed 's| |%20|g')
+                echo "${indent}- 📄 [${filename}](${cleanpath})"
               done)
 
           # awk로 README 내용 교체
-          awk -v s="$START" -v e="$END" -v content="$TREE_CONTENT" '
-            $0 ~ s {
-              print
-              print content
-              next
-            }
-            $0 ~ e { print; next }
-            !($0 ~ s || $0 ~ e)
+          awk -v s="$START" -v e="$END" -v tree="$TREE_CONTENT" '
+            $0 ~ s { print s; print tree; inblock=1; next }
+            $0 ~ e { print e; inblock=0; next }
+            !inblock { print }
           ' README.md > README.tmp && mv README.tmp README.md
 
       - name: Create dynamic commit/branch title
