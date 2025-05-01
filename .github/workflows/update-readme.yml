@@ -26,21 +26,24 @@ jobs:
           
           # 트리 문자열을 먼저 변수에 담는다 (HEREDOC 사용)
           TREE_CONTENT=$(find . -type f -name "*.md" \
-            | grep -vE '^\.\/(\.github|\.git|README\.md)$' \
+            | grep -vE '^\.\/(\.github|\.git|README\.md|FOLDER_TREE\.md)$' \
             | sort \
-            | while read path; do
+            | while read -r path; do
                 depth=$(echo "$path" | awk -F"/" '{print NF-1}')
                 indent=""
-                for ((i=1; i<depth; i++)); do
-                  indent="$indent│   "
-                done
+                for ((i=1; i<=depth; i++)); do indent="$indent│   "; done
+
                 symbol="├─ 📄"
-                if [ "$(basename "$path")" = "$(basename "$(find $(dirname "$path") -maxdepth 1 -type f -name '*.md' | sort | tail -n 1)")" ]; then
+                if [ "$(basename "$path")" = "$(basename "$(find "$(dirname "$path")" -maxdepth 1 -type f -name '*.md' | sort | tail -n 1)")" ]; then
                   symbol="└─ 📄"
                 fi
+
+                # 파일명과 링크주소 안전하게 처리
                 filename=$(basename "$path")
                 link=${path#./}
-                echo "${indent}${symbol} [${filename}](${link})"
+                link_escaped=$(echo "$link" | jq -sRr @uri)  # URL 인코딩
+
+                echo "${indent}${symbol} [${filename}]($link_escaped)"
               done)
 
           # awk로 README 내용 교체
@@ -48,13 +51,10 @@ jobs:
             $0 ~ s {
               print
               print content
-              skip=1
               next
             }
-            $0 ~ e {
-              skip=0
-            }
-            !skip
+            $0 ~ e { print; next }
+            !($0 ~ s || $0 ~ e)
           ' README.md > README.tmp && mv README.tmp README.md
 
       - name: Create dynamic commit/branch title
