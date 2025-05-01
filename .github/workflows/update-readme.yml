@@ -110,7 +110,8 @@ jobs:
           base: main
           title: ${{ steps.pr_context.outputs.TITLE }}
           body: "🧹 자동 생성된 폴더 구조를 반영합니다.\n리뷰 후 병합해주세요!"
-          delete-branch: true
+          commit-message: ${{ steps.pr_context.outputs.COMMIT }}
+          delete-branch: false
           reviewers: |
             limsubinn
             kdozlo
@@ -119,5 +120,6 @@ jobs:
             AUTO-UPDATE 🤖
           add-paths: |
             README.md  # ✅ 이거 반드시 명시해야 너의 기존 커밋이 덮이지 않음
+        
 
   
