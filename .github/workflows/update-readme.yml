@@ -3,7 +3,7 @@ name: update folder tree
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 0 * * 1'  # 매주 월요일 00:00 실행
 
 permissions:
   contents: write
@@ -12,33 +12,30 @@ permissions:
 jobs:
   update-readme:
     runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.GH_PAT }}
-
     steps:
       - name: Checkout main branch
         uses: actions/checkout@v3
         with:
           ref: main
-          token: ${{ secrets.GH_PAT }}
 
-      - name: Generate folder tree with markdown links
+      - name: Generate folder tree with links
         run: |
           echo "## 📁 Folder Structure" > FOLDER_TREE.md
-          find . -type f -name "*.md" | sort | while read file; do
-            dir=$(dirname "$file")
-            label=$(echo "$dir" | sed 's|^\./||')
-            [ -z "$label" ] && continue
 
-            # 이미 출력한 폴더는 제외
-            grep -q "^- \[$label\]" FOLDER_TREE.md && continue
+          find . -type f -name "*.md" | sort | while read path; do
+            # depth 계산
+            level=$(echo "$path" | grep -o "/" | wc -l)
+            indent=""
+            for ((i=1; i<level; i++)); do
+              indent="$indent  "
+            done
 
-            # 상대 경로 링크 변환
-            url=$(echo "$file" | sed 's|^\./||;s| |%20|g')
-            echo "- [$label]($url)" >> FOLDER_TREE.md
+            label=$(basename "$path")
+            url=$(echo "$path" | sed 's|^\./||;s| |%20|g')
+            echo "${indent}- [${label}](${url})" >> FOLDER_TREE.md
           done
 
-      - name: Update README.md between markers
+      - name: Replace tree block in README.md
         run: |
           START="<!--Tree Start-->"
           END="<!--Tree End-->"
@@ -60,34 +57,35 @@ jobs:
           BRANCH="update-folder-tree-${YEAR}${MONTH}${DAY}"
           echo "TITLE=$TITLE" >> $GITHUB_OUTPUT
           echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
+          echo "COMMIT=📁 폴더 구조 업데이트 - ${MONTH}월 ${WEEK_NUM}주차" >> $GITHUB_OUTPUT
 
-      - name: Create update branch and push
+      - name: Create branch and push changes
         run: |
           git checkout -b ${{ steps.pr_context.outputs.BRANCH }}
-          git config user.name "수민의 자동화 요정"
-          git config user.email "dalcheonroadhead@users.noreply.github.com"
+          git config user.name "GitHub Actions"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          echo "🔍 Git diff 시작"
+          git diff README.md || echo "⚠️ README.md diff 없음"
+
           git add README.md
-          git commit -m "📁 폴더 구조 업데이트"
-          git push -u origin ${{ steps.pr_context.outputs.BRANCH }} --force
+          git commit -m "${{ steps.pr_context.outputs.COMMIT }}" || echo "❗ 변경된 내용이 없어 커밋 생략됨"
+          git push -u origin ${{ steps.pr_context.outputs.BRANCH }}
 
       - name: Create PR
         uses: peter-evans/create-pull-request@v5
         with:
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ steps.pr_context.outputs.BRANCH }}
           base: main
           title: ${{ steps.pr_context.outputs.TITLE }}
-          body: "자동 생성된 폴더 구조를 반영합니다. 병합 후 README가 최신 상태로 유지됩니다."
-          commit-message: "📁 Auto-update: folder tree"
-          delete-branch: false
+          body: "자동 생성된 폴더 구조를 반영합니다."
+          commit-message: ${{ steps.pr_context.outputs.COMMIT }}
+          delete-branch: true
+          reviewers: |
+            limsubinn
+            kdozlo
+            dalcheonroadhead
+          labels: "AUTO-UPDATE 🤖"
 
-      - name: Get PR number
-        id: pr
-        run: |
-          PR_NUMBER=$(gh pr list --state open --head ${{ steps.pr_context.outputs.BRANCH }} --json number -q '.[0].number')
-          echo "PR_NUMBER=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
-      - name: Auto-merge PR
-        if: steps.pr.outputs.PR_NUMBER != ''
-        run: |
-          gh pr merge ${{ steps.pr.outputs.PR_NUMBER }} --squash --delete-branch --admin
