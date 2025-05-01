@@ -12,26 +12,25 @@ permissions:
 jobs:
   update-readme:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_PAT }}
 
     steps:
       - name: Checkout main branch
         uses: actions/checkout@v3
         with:
           ref: main
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_PAT }}
 
-      - name: Install tree
-        run: sudo apt-get update && sudo apt-get install -y tree
-
-      - name: Configure Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Generate folder tree
+      - name: Generate folder tree with links
         run: |
           echo "## 📁 Folder Structure" > FOLDER_TREE.md
-          tree -d -L 2 . >> FOLDER_TREE.md
+          find . -type f -name README.md | while read path; do
+            dir=$(dirname "$path")
+            label=$(echo "$dir" | sed 's|^\./||')
+            url=$(echo "$dir/README.md" | sed 's| |%20|g')
+            echo "- [$label]($url)" >> FOLDER_TREE.md
+          done
 
       - name: Update README.md between markers
         run: |
@@ -42,15 +41,13 @@ jobs:
           {
             echo "$BEFORE"
             echo "$START"
-            echo '```'
             cat FOLDER_TREE.md
-            echo '```'
             echo "$END"
             echo "$AFTER"
           } > README.md
 
-      - name: Create dynamic PR title
-        id: pr_title
+      - name: Create dynamic PR title and branch
+        id: pr_context
         run: |
           YEAR=$(date +%Y)
           MONTH=$(date +%-m)
@@ -58,21 +55,24 @@ jobs:
           FIRST_DAY_WEEKDAY=$(date -d "$YEAR-$MONTH-01" +%u)
           WEEK_NUM=$(( (DAY + FIRST_DAY_WEEKDAY - 1) / 7 + 1 ))
           TITLE="📁 Update folder structure - ${MONTH}월 ${WEEK_NUM}주차"
+          BRANCH="update-folder-tree-${YEAR}${MONTH}${DAY}"
           echo "TITLE=$TITLE" >> $GITHUB_OUTPUT
+          echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
 
       - name: Create update branch and push
         run: |
-          git checkout -b update-folder-tree
+          git checkout -b ${{ steps.pr_context.outputs.BRANCH }}
           git add README.md
           git commit -m "📁 폴더 구조 업데이트"
-          git push -u origin update-folder-tree --force
+          git push -u origin ${{ steps.pr_context.outputs.BRANCH }} --force
+
       - name: Create PR
         uses: peter-evans/create-pull-request@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: update-folder-tree
+          token: ${{ secrets.GH_PAT }}
+          branch: ${{ steps.pr_context.outputs.BRANCH }}
           base: main
-          title: ${{ steps.pr_title.outputs.TITLE }}
+          title: ${{ steps.pr_context.outputs.TITLE }}
           body: "자동 생성된 폴더 구조를 반영합니다. 병합 후 README가 최신 상태로 유지됩니다."
           commit-message: "📁 Auto-update: folder tree"
           delete-branch: false
@@ -80,18 +80,10 @@ jobs:
       - name: Get PR number
         id: pr
         run: |
-          echo "🔍 현재 열린 PR 리스트:"
-          gh pr list --state open --head update-folder-tree
-          PR_NUMBER=$(gh pr list --state open --head update-folder-tree --json number -q '.[0].number')
+          PR_NUMBER=$(gh pr list --state open --head ${{ steps.pr_context.outputs.BRANCH }} --json number -q '.[0].number')
           echo "PR_NUMBER=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-  
+
       - name: Auto-merge PR
         if: steps.pr.outputs.PR_NUMBER != ''
         run: |
           gh pr merge ${{ steps.pr.outputs.PR_NUMBER }} --squash --delete-branch --admin
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  
