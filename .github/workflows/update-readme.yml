@@ -1,4 +1,4 @@
-name: 정기적 폴더 구조 최신화 git - action
+name: update folder tree
 
 on:
   workflow_dispatch:
@@ -67,15 +67,17 @@ jobs:
           git commit -m "📁 Auto-update: folder tree"
           git push -u origin update-folder-tree
 
-      - name: Create Pull Request and Auto-Merge
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          title: ${{ steps.pr_title.outputs.TITLE }}
-          body: "자동 생성된 폴더 구조를 반영합니다. 병합 후 README가 최신 상태로 유지됩니다."
-          branch: update-folder-tree
-          base: main
-          delete-branch: true
-          commit-message: "📁 Auto-update: folder tree"
-          merge: true
-          merge-method: squash
+      - name: Get PR number
+        id: pr
+        run: |
+          echo "PR_NUMBER=$(gh pr list --state open --head update-folder-tree --json number -q '.[0].number')" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+      - name: Auto-merge PR
+        if: steps.pr.outputs.PR_NUMBER != ''
+        run: |
+          gh pr merge ${{ steps.pr.outputs.PR_NUMBER }} --squash --delete-branch --admin
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
