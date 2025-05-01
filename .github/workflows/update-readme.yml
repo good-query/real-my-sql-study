@@ -66,7 +66,7 @@ jobs:
           FIRST_DAY_WEEKDAY=$(date -d "$YEAR-$MONTH-01" +%u)
           WEEK_NUM=$(( (DAY + FIRST_DAY_WEEKDAY - 1) / 7 + 1 ))
           TITLE="📁 Update folder structure - ${MONTH}월 ${WEEK_NUM}주차"
-          BRANCH="update-folder-tree-${YEAR}${MONTH}${DAY}"
+          BRANCH="update-folder-tree-$(date +'%Y%m%d-%H%M%S')"
           echo "TITLE=$TITLE" >> $GITHUB_OUTPUT
           echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
           echo "COMMIT=📁 폴더 구조 업데이트 - ${MONTH}월 ${WEEK_NUM}주차" >> $GITHUB_OUTPUT
