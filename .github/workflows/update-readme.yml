@@ -21,13 +21,7 @@ jobs:
       - name: Generate folder tree
         run: |
           echo "## 📁 Folder Structure" > FOLDER_TREE.md
-          tree -d -L 2 --noreport >> FOLDER_TREE.md || echo "(tree 명령 실패)"
-      
-
-      - name: Generate folder tree
-        run: |
-          echo "## 📁 Folder Structure" > FOLDER_TREE.md
-          tree -d -L 2 real-mysql >> FOLDER_TREE.md
+          tree -d -L 2 . >> FOLDER_TREE.md
 
       - name: Merge with main README
         run: |
