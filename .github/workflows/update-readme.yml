@@ -1,0 +1,76 @@
+name: update folder tree
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Generate folder tree with symbols
+        run: |
+          echo "## 📁 Folder Structure" > FOLDER_TREE.md
+          find . -type f -name "*.md" \
+            | grep -vE '^\.\/(\.github|\.git|FOLDER_TREE\.md)$' \
+            | sort | while read path; do
+              depth=$(echo "$path" | awk -F"/" '{print NF-1}')
+              indent=""
+              for ((i=1; i<depth; i++)); do
+                indent="$indent│   "
+              done
+              # 마지막 depth는 └─ 로 표현
+              symbol="├─ 📄"
+              if [ "$(basename "$path")" = "$(basename "$(find $(dirname "$path") -maxdepth 1 -type f -name '*.md' | sort | tail -n 1)")" ]; then
+                symbol="└─ 📄"
+              fi
+
+              filename=$(basename "$path")
+              link=${path#./}
+              echo "${indent}${symbol} [${filename}](${link})" >> FOLDER_TREE.md
+          done
+
+      - name: Replace tree block in README.md
+        run: |
+          START="<!--Tree Start-->"
+          END="<!--Tree End-->"
+          awk -v s="$START" -v e="$END" '
+            $0 ~ s { print; system("cat FOLDER_TREE.md"); skip=1; next }
+            $0 ~ e { skip=0 }
+            !skip
+          ' README.md > README.tmp && mv README.tmp README.md
+
+      - name: Create dynamic commit/branch title
+        id: pr_context
+        run: |
+          YEAR=$(date +%Y)
+          MONTH=$(date +%-m)
+          DAY=$(date +%-d)
+          FIRST_DAY_WEEKDAY=$(date -d "$YEAR-$MONTH-01" +%u)
+          WEEK_NUM=$(( (DAY + FIRST_DAY_WEEKDAY - 1) / 7 + 1 ))
+          TITLE="📁 Update folder structure - ${MONTH}월 ${WEEK_NUM}주차"
+          BRANCH="update-folder-tree-${YEAR}${MONTH}${DAY}"
+          echo "TITLE=$TITLE" >> $GITHUB_OUTPUT
+          echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
+          echo "COMMIT=📁 폴더 구조 업데이트 - ${MONTH}월 ${WEEK_NUM}주차" >> $GITHUB_OUTPUT
+
+      - name: Create branch and push
+        run: |
+          git checkout -b ${{ steps.pr_context.outputs.BRANCH }}
+          git config user.name "GitHub Actions"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add README.md
+          git commit -m "${{ steps.pr_context.outputs.COMMIT }}" || echo "❗ 변경된 내용 없음"
+          git push -u origin ${{ steps.pr_context.outputs.BRANCH }}
