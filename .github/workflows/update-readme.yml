@@ -26,18 +26,30 @@ jobs:
           
           # 트리 문자열을 먼저 변수에 담는다 (HEREDOC 사용)
           TREE_CONTENT=$(find . -type f -name "*.md" \
-            | grep -vE "^\.\/(\.github|FOLDER_TREE\.md)" \
-            | sort \
-            | while read -r path; do
-                depth=$(echo "$path" | awk -F"/" '{print NF-1}')
-                indent=""
-                for ((i=1; i<depth; i++)); do
-                  indent="$indent  "
-                done
-                filename=$(basename "$path")
-                cleanpath=$(echo "$path" | sed 's|^\./||' | sed 's| |%20|g')
-                echo "${indent}- 📄 [${filename}](${cleanpath})"
-              done)
+          | grep -vE '^\.\/(\.git|\.github|FOLDER_TREE\.md|README_TREE\.md)$' \
+          | sort \
+          | while read -r filepath; do
+            rel_path="${filepath#./}"
+            IFS='/' read -ra parts <<< "$rel_path"
+            indent=""
+            path_accum=""
+            
+            for ((i=0; i<${#parts[@]}-1; i++)); do
+              part="${parts[$i]}"
+              path_accum="${path_accum}/${part}"
+              key="${path_accum#/}"
+
+              if [[ -z "${printed_dirs[$key]}" ]]; then
+                echo "${indent}- ${part}/" >> README_TREE.md
+                printed_dirs[$key]=1
+              fi
+              indent="$indent  "
+            done
+
+            filename="${parts[-1]}"
+            link=$(echo "$rel_path" | sed 's| |%20|g')
+            echo "${indent}- 📄 [${filename}](${link})" >> README_TREE.md
+          done)
 
           # awk로 README 내용 교체
           awk -v s="$START" -v e="$END" -v tree="$TREE_CONTENT" '
