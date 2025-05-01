@@ -23,11 +23,10 @@ jobs:
         run: |
           START="<!--TREE START-->"
           END="<!--TREE END-->"
-          
+
           declare -A printed_dirs
           PREV_TOP_LEVEL=""
-
-          > README_TREE.md  # 초기화
+          > README_TREE.md
 
           find . \
             -path './.git' -prune -o \
@@ -65,19 +64,21 @@ jobs:
             echo "${indent}- 📄 [${filename}](${link})" >> README_TREE.md
           done
 
-          # overwrite README.md in-place using AWK
-          awk -v s="$START" -v e="$END" 'BEGIN {
-            while ((getline line < "README_TREE.md") > 0) tree = tree line "\n"
-          }
-          {
-            if ($0 ~ s) { print; print tree; skip=1; next }
-            if ($0 ~ e) { print; skip=0; next }
-            if (!skip) print
-          }' README.md > README.tmp && mv README.tmp README.md
-                    
-          echo "✅ 최종 변경된 README.md 내용:"
-          cat README.md   # 🔍 여기에 넣어!
+          # 🧠 README.md 완전히 새로 만들어서 덮어쓰기
+          awk -v s="$START" -v e="$END" '
+            BEGIN {
+              while ((getline line < "README_TREE.md") > 0) tree = tree line "\n"
+            }
+            {
+              if ($0 ~ s) { print s; print tree; inblock=1; next }
+              if ($0 ~ e) { print e; inblock=0; next }
+              if (!inblock) print
+            }
+          ' README.md > README.tmp && mv README.tmp README.md
 
+          echo "✅ README.md 최종 내용 확인"
+          cat README.md
+  
       - name: Create dynamic commit/branch title
         id: pr_context
         run: |
@@ -103,20 +104,20 @@ jobs:
           git push -u origin ${{ steps.pr_context.outputs.BRANCH }}
 
 
-      - name: Create PR
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ steps.pr_context.outputs.BRANCH }}
-          base: main
-          title: ${{ steps.pr_context.outputs.TITLE }}
-          body: "🧹 자동 생성된 폴더 구조를 반영합니다.\n리뷰 후 병합해주세요!"
-          commit-message: ${{ steps.pr_context.outputs.COMMIT }}
-          delete-branch: false
-          reviewers: |
-            limsubinn
-            kdozlo
-            dalcheonroadhead
-          labels: |
-            AUTO-UPDATE 🤖
+      # - name: Create PR
+      #   uses: peter-evans/create-pull-request@v5
+      #   with:
+      #     token: ${{ secrets.GITHUB_TOKEN }}
+      #     branch: ${{ steps.pr_context.outputs.BRANCH }}
+      #     base: main
+      #     title: ${{ steps.pr_context.outputs.TITLE }}
+      #     body: "🧹 자동 생성된 폴더 구조를 반영합니다.\n리뷰 후 병합해주세요!"
+      #     commit-message: ${{ steps.pr_context.outputs.COMMIT }}
+      #     delete-branch: false
+      #     reviewers: |
+      #       limsubinn
+      #       kdozlo
+      #       dalcheonroadhead
+      #     labels: |
+      #       AUTO-UPDATE 🤖
   
