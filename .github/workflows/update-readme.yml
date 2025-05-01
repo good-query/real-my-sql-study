@@ -33,6 +33,7 @@ jobs:
             -path './.github' -prune -o \
             -path './README_TREE.md' -prune -o \
             -path './FOLDER_TREE.md' -prune -o \
+
             -type f -name "*.md" -print \
           | sort \
           | while read -r filepath; do
@@ -98,28 +99,24 @@ jobs:
           git checkout -b ${{ steps.pr_context.outputs.BRANCH }}
           git config user.name "폴더 정리 요정 🤖"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           git add README.md
           git commit -m "${{ steps.pr_context.outputs.COMMIT }}" || echo "❗ 변경된 내용 없음"
           git push -u origin ${{ steps.pr_context.outputs.BRANCH }}
-      - name: Create PR
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ steps.pr_context.outputs.BRANCH }}
-          base: main
-          title: ${{ steps.pr_context.outputs.TITLE }}
-          body: "🧹 자동 생성된 폴더 구조를 반영합니다.\n리뷰 후 병합해주세요!"
-          commit-message: ${{ steps.pr_context.outputs.COMMIT }}
-          delete-branch: false
-          reviewers: |
-            limsubinn
-            kdozlo
-            dalcheonroadhead
-          labels: |
-            AUTO-UPDATE 🤖
-          add-paths: |
-            README.md  # ✅ 이거 반드시 명시해야 너의 기존 커밋이 덮이지 않음
-        
 
+
+      - name: Create PR manually using gh CLI
+        run: |
+          gh pr create \
+            --title "${{ steps.pr_context.outputs.TITLE }}" \
+            --body "🧹 자동 생성된 폴더 구조를 반영합니다.\n리뷰 후 병합해주세요!" \
+            --base main \
+            --head ${{ steps.pr_context.outputs.BRANCH }} \
+            --reviewer limsubinn \
+            --reviewer kdozlo \
+            --reviewer dalcheonroadhead \
+            --label "AUTO-UPDATE 🤖" \
+            --label "FOLDER-TREE"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
   
