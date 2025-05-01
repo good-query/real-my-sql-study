@@ -104,20 +104,20 @@ jobs:
           git push -u origin ${{ steps.pr_context.outputs.BRANCH }}
 
 
-      # - name: Create PR
-      #   uses: peter-evans/create-pull-request@v5
-      #   with:
-      #     token: ${{ secrets.GITHUB_TOKEN }}
-      #     branch: ${{ steps.pr_context.outputs.BRANCH }}
-      #     base: main
-      #     title: ${{ steps.pr_context.outputs.TITLE }}
-      #     body: "🧹 자동 생성된 폴더 구조를 반영합니다.\n리뷰 후 병합해주세요!"
-      #     commit-message: ${{ steps.pr_context.outputs.COMMIT }}
-      #     delete-branch: false
-      #     reviewers: |
-      #       limsubinn
-      #       kdozlo
-      #       dalcheonroadhead
-      #     labels: |
-      #       AUTO-UPDATE 🤖
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.pr_context.outputs.BRANCH }}
+          base: main
+          title: ${{ steps.pr_context.outputs.TITLE }}
+          body: "🧹 자동 생성된 폴더 구조를 반영합니다.\n리뷰 후 병합해주세요!"
+          commit-message: ${{ steps.pr_context.outputs.COMMIT }}
+          delete-branch: false
+          reviewers: |
+            limsubinn
+            kdozlo
+            dalcheonroadhead
+          labels: |
+            AUTO-UPDATE 🤖
   
