@@ -102,8 +102,6 @@ jobs:
           git add README.md
           git commit -m "${{ steps.pr_context.outputs.COMMIT }}" || echo "❗ 변경된 내용 없음"
           git push -u origin ${{ steps.pr_context.outputs.BRANCH }}
-
-
       - name: Create PR
         uses: peter-evans/create-pull-request@v5
         with:
@@ -121,4 +119,5 @@ jobs:
             AUTO-UPDATE 🤖
           add-paths: |
             README.md  # ✅ 이거 반드시 명시해야 너의 기존 커밋이 덮이지 않음
+
   
