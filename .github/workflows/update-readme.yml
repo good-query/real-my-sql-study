@@ -91,7 +91,7 @@ jobs:
           BRANCH="update-folder-tree-$(date +'%Y%m%d-%H%M%S')"
           echo "TITLE=$TITLE" >> $GITHUB_OUTPUT
           echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
-          echo "COMMIT=📁 폴더 구조 업데이트 - ${MONTH}월 ${WEEK_NUM}주차" >> $GITHUB_OUTPUT
+          echo "COMMIT= chore 📁 폴더 구조 업데이트 - ${MONTH}월 ${WEEK_NUM}주차" >> $GITHUB_OUTPUT
 
       - name: Create branch and push
         run: |
