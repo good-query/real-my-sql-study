@@ -31,19 +31,11 @@ jobs:
             | while read -r path; do
                 depth=$(echo "$path" | awk -F"/" '{print NF-1}')
                 indent=""
-                for ((i=1; i<=depth; i++)); do indent="$indent│   "; done
+                for ((i=1; i<=depth; i++)); do indent="$indent  "; done
 
-                symbol="├─ 📄"
-                if [ "$(basename "$path")" = "$(basename "$(find "$(dirname "$path")" -maxdepth 1 -type f -name '*.md' | sort | tail -n 1)")" ]; then
-                  symbol="└─ 📄"
-                fi
-
-                # 파일명과 링크주소 안전하게 처리
                 filename=$(basename "$path")
-                link=${path#./}
-                link_escaped=$(echo "$link" | jq -sRr @uri)  # URL 인코딩
-
-                echo "${indent}${symbol} [${filename}]($link_escaped)"
+                link=$(echo "$path" | sed 's|^\./||' | jq -sRr @uri)
+                echo "${indent}- [${filename}](${link})"
               done)
 
           # awk로 README 내용 교체
