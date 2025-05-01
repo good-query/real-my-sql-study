@@ -65,16 +65,19 @@ jobs:
             echo "${indent}- 📄 [${filename}](${link})" >> README_TREE.md
           done
 
-          # 🧠 sed로 TREE 영역만 교체
-          sed -i '/<!--TREE START-->/, /<!--TREE END-->/ {
-            /<!--TREE START-->/ {
-              p
-              r README_TREE.md
-            }
-            /<!--TREE END-->/!d
-          }' README.md
-        
-          touch -a README.md
+          # overwrite README.md in-place using AWK
+          awk -v s="$START" -v e="$END" 'BEGIN {
+            while ((getline line < "README_TREE.md") > 0) tree = tree line "\n"
+          }
+          {
+            if ($0 ~ s) { print; print tree; skip=1; next }
+            if ($0 ~ e) { print; skip=0; next }
+            if (!skip) print
+          }' README.md > README.tmp && mv README.tmp README.md
+                    
+          echo "✅ 최종 변경된 README.md 내용:"
+          cat README.md   # 🔍 여기에 넣어!
+
       - name: Create dynamic commit/branch title
         id: pr_context
         run: |
