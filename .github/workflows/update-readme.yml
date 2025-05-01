@@ -21,8 +21,8 @@ jobs:
 
       - name: Replace tree block in README.md
         run: |
-          START="<!--Tree Start-->"
-          END="<!--Tree End-->"
+          START="<!--TREE START-->"
+          END="<!--TREE END-->"
           
           # 트리 문자열을 먼저 변수에 담는다 (HEREDOC 사용)
           TREE_CONTENT=$(find . -type f -name "*.md" \
