@@ -65,7 +65,7 @@ jobs:
           git checkout -b update-folder-tree
           git add README.md
           git commit -m "📁 Auto-update: folder tree"
-          git push -u origin update-folder-tree
+          git push -u origin update-folder-tree --force
 
       - name: Get PR number
         id: pr
