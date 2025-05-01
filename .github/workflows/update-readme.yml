@@ -26,7 +26,7 @@ jobs:
       - name: Merge with main README
         run: |
           awk '/## 📁 Folder Structure/ {exit} {print}' real-mysql/README.md > TEMP_README.md
-          cat TEMP_README.md FOLDER_TREE.md > real-mysql/README.md
+          cat TEMP_README.md FOLDER_TREE.md > README.md
 
       - name: Commit changes
         run: |
