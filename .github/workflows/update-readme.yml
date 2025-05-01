@@ -64,8 +64,18 @@ jobs:
         run: |
           git checkout -b update-folder-tree
           git add README.md
-          git commit -m "📁 Auto-update: folder tree"
+          git commit -m "📁 폴더 구조 업데이트"
           git push -u origin update-folder-tree --force
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: update-folder-tree
+          base: main
+          title: ${{ steps.pr_title.outputs.TITLE }}
+          body: "자동 생성된 폴더 구조를 반영합니다. 병합 후 README가 최신 상태로 유지됩니다."
+          commit-message: "📁 Auto-update: folder tree"
+          delete-branch: false
 
       - name: Get PR number
         id: pr
