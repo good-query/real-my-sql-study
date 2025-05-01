@@ -23,44 +23,50 @@ jobs:
         run: |
           START="<!--TREE START-->"
           END="<!--TREE END-->"
-      
-          TREE_FILE="README_TREE.md"
-          echo "## 📁 Folder Structure" > $TREE_FILE
-      
-          TMP_PRINTED_DIRS=".printed_dirs.tmp"
-          > $TMP_PRINTED_DIRS
-      
+          
+          declare -A printed_dirs
+          PREV_TOP_LEVEL=""
+
+          > README_TREE.md  # 초기화
+
           find . -type f -name "*.md" \
-          | grep -vE '^\.\/(\.git|\.github|FOLDER_TREE\.md|README_TREE\.md)$' \
+          | grep -vE '^\.\/(\.git|\.github|FOLDER_TREE\.md|README_TREE\.md|README.md)$' \
           | sort \
           | while read -r filepath; do
             rel_path="${filepath#./}"
             IFS='/' read -ra parts <<< "$rel_path"
             indent=""
             path_accum=""
-      
+
+            top_level="${parts[0]}"
+            if [[ "$top_level" != "$PREV_TOP_LEVEL" ]]; then
+              echo "" >> README_TREE.md
+              PREV_TOP_LEVEL="$top_level"
+            fi
+
             for ((i=0; i<${#parts[@]}-1; i++)); do
               part="${parts[$i]}"
               path_accum="${path_accum}/${part}"
               key="${path_accum#/}"
-      
-              if ! grep -Fxq "$key" "$TMP_PRINTED_DIRS"; then
-                echo "${indent}- ${part}/" >> $TREE_FILE
-                echo "$key" >> "$TMP_PRINTED_DIRS"
+
+              if [[ -z "${printed_dirs[$key]}" ]]; then
+                echo "${indent}- ${part}/" >> README_TREE.md
+                printed_dirs[$key]=1
               fi
               indent="$indent  "
             done
-      
+
             filename="${parts[-1]}"
             link=$(echo "$rel_path" | sed 's| |%20|g')
-            echo "${indent}- 📄 [${filename}](${link})" >> $TREE_FILE
+            echo "${indent}- 📄 [${filename}](${link})" >> README_TREE.md
           done
-      
+
           awk -v s="$START" -v e="$END" '
-            $0 ~ s { print s; system("cat README_TREE.md"); inblock=1; next }
-            $0 ~ e { print e; inblock=0; next }
-            !inblock { print }
+            $0 ~ s { print s; while ((getline line < "README_TREE.md") > 0) print line; skip=1; next }
+            $0 ~ e { print e; skip=0; next }
+            !skip { print }
           ' README.md > README.tmp && mv README.tmp README.md
+  
 
       - name: Create dynamic commit/branch title
         id: pr_context
