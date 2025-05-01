@@ -107,7 +107,7 @@ jobs:
         run: |
           gh pr create \
             --title "${{ steps.pr_context.outputs.TITLE }}" \
-            --body "🧹 자동 생성된 폴더 구조를 반영합니다.\n리뷰 후 병합해주세요!" \
+            --body "🧹 자동 생성된 폴더 구조를 반영합니다.  리뷰 후 병합해주세요!" \
             --base main \
             --head ${{ steps.pr_context.outputs.BRANCH }} \
             --reviewer limsubinn \
