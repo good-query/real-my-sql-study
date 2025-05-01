@@ -74,7 +74,7 @@ jobs:
             /<!--TREE END-->/!d
           }' README.md
         
-
+          touch -a README.md
       - name: Create dynamic commit/branch title
         id: pr_context
         run: |
