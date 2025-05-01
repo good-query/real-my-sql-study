@@ -29,8 +29,13 @@ jobs:
 
           > README_TREE.md  # 초기화
 
-          find . -type f -name "*.md" \
-          | grep -vE '^\.\/(\.git|\.github|FOLDER_TREE\.md|README_TREE\.md|README.md)$' \
+          find . \
+            -path './.git' -prune -o \
+            -path './.github' -prune -o \
+            -path './README_TREE.md' -prune -o \
+            -path './FOLDER_TREE.md' -prune -o \
+            -name 'README.md' -prune -o \
+            -type f -name "*.md" -print \
           | sort \
           | while read -r filepath; do
             rel_path="${filepath#./}"
