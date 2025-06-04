@@ -48,7 +48,7 @@ mysql> CREATE TABLE user (
           PRIMARY KEY (user_id),
           INDEX ix_fullname ((CONCAT(first_name, ' ', last_name)))
        );
-
+```
 함수를 직접 사용하는 인덱스는 테이블의 구조는 변경하지 않고, 계산된 결괏값의 검색을 빠르게 만들어준다. <br>
 함수 기반 인덱스를 제대로 활용하려면 반드시 조건절에 함수 기반 인덱스에 명시된 표현식이 그대로 사용되어야 한다.
 ```sql
