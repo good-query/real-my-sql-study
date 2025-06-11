@@ -1,0 +1,120 @@
+name: 폴더 트리 요정
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1'  # 매주 월요일 00:00 실행
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Replace tree block in README.md
+        run: |
+          START="<!--TREE START-->"
+          END="<!--TREE END-->"
+
+          declare -A printed_dirs
+          PREV_TOP_LEVEL=""
+          > README_TREE.md
+
+          find . \
+            -path './.git' -prune -o \
+            -path './.github' -prune -o \
+            -path './README_TREE.md' -prune -o \
+            -path './FOLDER_TREE.md' -prune -o \
+            -type f -name "*.md" -print \
+          | sort \
+          | while read -r filepath; do
+            rel_path="${filepath#./}"
+            IFS='/' read -ra parts <<< "$rel_path"
+            indent=""
+            path_accum=""
+
+            top_level="${parts[0]}"
+            if [[ "$top_level" != "$PREV_TOP_LEVEL" ]]; then
+              echo "" >> README_TREE.md
+              PREV_TOP_LEVEL="$top_level"
+            fi
+
+            for ((i=0; i<${#parts[@]}-1; i++)); do
+              part="${parts[$i]}"
+              path_accum="${path_accum}/${part}"
+              key="${path_accum#/}"
+
+              if [[ -z "${printed_dirs[$key]}" ]]; then
+                echo "${indent}- ${part}/" >> README_TREE.md
+                printed_dirs[$key]=1
+              fi
+              indent="$indent  "
+            done
+
+            filename="${parts[-1]}"
+            link=$(echo "$rel_path" | sed 's| |%20|g')
+            echo "${indent}- 📄 [${filename}](${link})" >> README_TREE.md
+          done
+
+          # 🧠 README.md 완전히 새로 만들어서 덮어쓰기
+          awk -v s="$START" -v e="$END" '
+            BEGIN {
+              while ((getline line < "README_TREE.md") > 0) tree = tree line "\n"
+            }
+            {
+              if ($0 ~ s) { print s; print tree; inblock=1; next }
+              if ($0 ~ e) { print e; inblock=0; next }
+              if (!inblock) print
+            }
+          ' README.md > README.tmp && mv README.tmp README.md
+
+          echo "✅ README.md 최종 내용 확인"
+          cat README.md
+  
+      - name: Create dynamic commit/branch title
+        id: pr_context
+        run: |
+          YEAR=$(date +%Y)
+          MONTH=$(date +%-m)
+          DAY=$(date +%-d)
+          FIRST_DAY_WEEKDAY=$(date -d "$YEAR-$MONTH-01" +%u)
+          WEEK_NUM=$(( (DAY + FIRST_DAY_WEEKDAY - 1) / 7 + 1 ))
+          TITLE="📁 Update folder structure - ${MONTH}월 ${WEEK_NUM}주차"
+          BRANCH="update-folder-tree-$(date +'%Y%m%d-%H%M%S')"
+          echo "TITLE=$TITLE" >> $GITHUB_OUTPUT
+          echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
+          echo "COMMIT= chore 📁 폴더 구조 업데이트 - ${MONTH}월 ${WEEK_NUM}주차" >> $GITHUB_OUTPUT
+
+      - name: Commit & Create PR only if changes exist
+        run: |
+          if git diff --quiet; then
+            echo "⚠️ 변경 사항 없음. PR 생략"
+            exit 0
+          fi
+      
+          git checkout -b ${{ steps.pr_context.outputs.BRANCH }}
+          git config user.name "폴더 정리 요정 🤖"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "${{ steps.pr_context.outputs.COMMIT }}"
+          git push -u origin ${{ steps.pr_context.outputs.BRANCH }}
+      
+          gh pr create \
+            --title "${{ steps.pr_context.outputs.TITLE }}" \
+            --body "🧹 자동 생성된 폴더 구조를 반영합니다. 리뷰 후 병합해주세요!" \
+            --base main \
+            --head ${{ steps.pr_context.outputs.BRANCH }} \
+            --reviewer limsubinn \
+            --reviewer kdozlo \
+            --reviewer dalcheonroadhead \
+            --label "AUTO-UPDATE 🤖"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
