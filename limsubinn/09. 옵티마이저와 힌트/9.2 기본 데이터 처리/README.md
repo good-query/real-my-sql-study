@@ -605,3 +605,53 @@ mysql> SELECT COUNT(DISTINCT first_name, last_name)
        FROM employees
        WHERE emp_no BETWEEN 10001 AND 10200;
 ```
+
+<br>
+
+#### ✅ 추가 내용
+집합 함수와 함께 사용된 DISTINCT 처리에서 임시 테이블을 사용 여부를 확인하고 싶다면 <br>
+1. performance_schema 활성화
+   ```sql
+   mysql> SET optimizer_trace = 'enabled=on';
+   ```
+2. 쿼리 프로파일링
+   ```sql
+   mysql> SELECT * FROM INFORMATION_SCHEMA.OPTIMIZER_TRACE;
+   ```
+<br>
+
+옵티마이저 트레이스 중 다음 부분을 확인하면 된다. <br>
+```json
+"considering_tmp_tables": [
+  {
+    "creating_tmp_table": {
+      "tmp_table_info": {
+        "table": "intermediate_tmp_table",
+        "columns": 1,
+        "row_length": 5,
+        "key_length": 4,
+        "unique_constraint": false,
+        "makes_grouped_rows": false,
+        "cannot_insert_duplicates": true,
+        "location": "TempTable"
+      }
+    }
+  }
+]
+```
+- `"creating_tmp_table"`: 임시 테이블 생성이 실제로 발생했음을 의미
+- `"table": "intermediate_tmp_table"`: 중간 결과 저장용 임시 테이블
+- `"cannot_insert_duplicates": true`: 중복 삽입을 막음 -> 즉, DISTINCT 처리용
+- `"columns": 1`: salary 하나만 추적
+- `"location": "TempTable"`: 메모리 또는 디스크 기반의 임시 테이블
+<br>
+
+`EXPLAIN`은 다음의 내용만 보여준다.
+- 테이블 액세스 전략 (`range`, `ref`, `ALL` 등)
+- 조인 순서
+- 필터 조건
+- 경우에 따라 `Using temporary`, `Using filesort` 같은 플래그
+<br>
+
+`COUNT(DISTINCT ...)`에서 생성되는 임시 테이블은 SQL 실행 엔진의 내부 집계 처리 단계에서 발생하기 때문에, <br>
+EXPLAIN에서는 숨겨져 있지만 OPTIMIZER_TRACE에서는 명확히 노출된다. <br>
