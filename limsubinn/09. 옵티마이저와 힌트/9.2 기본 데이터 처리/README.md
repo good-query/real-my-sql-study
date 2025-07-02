@@ -514,3 +514,94 @@ mysql> EXPLAIN
 ![image](https://github.com/user-attachments/assets/ce8e3bd1-b94f-4515-9e7e-9982308de94a) <br>
 
 <br>
+
+### 9.2.5 DISTINCT 처리
+특정 컬럼의 유니크한 값만 조회하려면 `SELECT` 쿼리에 `DISTINCT`를 사용한다. <br>
+
+`DISTINCT`는 `MIN()`, `MAX()`, `COUNT()` 같은 집합 함수와 함께 사용되는 경우와 집합 함수가 없는 경우로 구분해서 살펴보자. <br>
+각 경우에 DISTINCT 키워드가 영향을 미치는 범위가 다르기 때문이다. <br>
+
+집합 함수와 같이 DISTINCT가 사용되는 쿼리의 실행 계획에서 DISTINCT 처리가 인덱스를 사용하지 못할 때는 항상 임시 테이블이 필요하다. <br>
+하지만 실행 계획의 Extra 컬럼에는 "Using temporary" 메시지가 출력되지 않는다. <br>
+
+#### 1️⃣ SELECT DISTINCT ...
+단순히 SELECT되는 레코드 중 유니크한 레코드만 가져오고자 하면 `SELECT DISTINCT` 형태의 쿼리 문장을 사용한다. <br>
+이 경우 `GROUP BY`와 동일한 방식으로 처리된다. <br>
+
+```sql
+mysql> SELECT DISTINCT emp_no FROM salaries;
+mysql> SELECT emp_no FROM salaries GROUP BY emp_no;
+```
+
+`DISTINCT`는 SELECT하는 레코드(튜플)를 유니크하게 SELECT하는 것이지, 특정 컬럼만 유니크하게 조회하는 것이 아니다. <br>
+```sql
+# (first_name, last_name) 조합 전체가 유니크한 레코드를 가져온다.
+mysql> SELECT DISTINCT first_name, last_name FROM employees;
+```
+
+MySQL 서버는 DISTINCT 뒤의 괄호를 그냥 의미 없이 사용된 괄호로 해석하고 제거해 버린다. <br>
+DISTINCT는 함수가 아니므로 그 뒤의 괄호는 의미가 없는 것이다. <br>
+```sql
+# (first_name, last_name) 조합 전체가 유니크한 레코드를 가져온다.
+mysql> SELECT DISTINCT(first_name), last_name FROM empoyees;
+```
+
+SELECT 절에 사용된 DISTINCT 키워드는 **조회되는 모든 컬럼**에 영향을 미친다. <br>
+단, 집합 함수와 함께 사용된 DISTINCT의 경우는 다르다. <br>
+
+<br>
+
+#### 2️⃣ 집합 함수와 함께 사용된 DISTINCT
+`COUNT()`, `MIN()`, `MAX()` 같은 집합 함수 내에서 `DISTINCT` 키워드가 사용될 수 있는데, <br>
+이 경우 일반적으로 SELECT DISTINCT와 다른 형태로 해석된다. <br>
+그 **집합 함수의 인자로 전달된 컬럼값이 유니크한 것**들을 가져온다. <br>
+
+아래의 쿼리는 내부적으로는 `COUNT(DISTCINT s.salary)`를 처리하기 위해 임시 테이블을 사용한다. <br>
+하지만 실행 계획에는 임시 테이블을 사용한다는 메시지가 표시되지 않는다. <br>
+```sql
+mysql> EXPLAIN SELECT COUNT(DISTINCT s.salary)
+       FROM employees e, salaries s
+       WHERE e.emp_no = s.emp_no AND e.emp_no BETWEEN 100001 AND 100100;
+```
+<img width="1064" alt="image" src="https://github.com/user-attachments/assets/0203c179-d005-4ad9-bb77-330068efd673" />
+<br>
+
+위 쿼리의 경우에는 employees 테이블과 salaries 테이블을 조인한 결과에서 salary 컬럼의 값만 저장하기 위한 임시 테이블을 만들어서 사용한다. <br>
+이때 임시 테이블의 salary 컬럼에는 유니크 인덱스가 생성되기 때문에 레코드 건수가 많아지면 상당히 느려질 수 있는 형태의 쿼리다. <br>
+
+위의 쿼리에 COUNT(DISTINCT ...)를 하나 더 추가해서 다음과 같이 변경해보자. <br>
+다음 쿼리를 처리하려면 s.salary 컬럼의 값을 저장하는 임시 테이블과 e.last_name 컬럼의 값을 저장하는 또 다른 임시 테이블이 필요하다. <br>
+```sql
+mysql> SELECT COUNT(DISTINCT s.salary), COUNT(DISTINCT e.last_name)
+       FROM employees e, salaries s
+       WHERE e.emp_no = s.emp_no AND e.emp_no BETWEEN 100001 AND 100100;
+```
+
+위 쿼리는 DISTINCT 처리를 위해 인덱스를 이용할 수 없어 임시 테이블이 필요했다. <br>
+하지만 다음 쿼리와 같이 인덱스된 컬럼에 대해 DISTINCT 처리를 수행할 때는 <br>
+인덱스를 풀 스캔하거나 레인지 스캔하면서 임시 테이블 없이 최적화된 처리를 수행할 수 있다. <br>
+```sql
+mysql> SELECT COUNT(DISTINCT emp_no) FROM employees;
+mysql> SELECT COUNT(DISTINCT emp_no) FROM dept_emp GROUP BY dept_no;
+```
+
+<br>
+
+#### 💡 참고
+DISTINCT가 집합 함수 없이 사용된 경우와 집합 함수 내에서 사용된 경우 쿼리의 결과가 조금씩 달라지기 때문에 그 차이를 정확히 이해해야 한다. <br>
+```sql
+# (first_name, last_name)의 조합이 유일한 행들을 조회
+mysql> SELECT DISTINCT first_name, last_name
+       FROM employees
+       WHERE emp_no BETWEEN 10001 AND 10200;
+
+# 각 컬럼별로 독립적으로 유니크한 값의 개수를 세서 조회
+mysql> SELECT COUNT(DISTINCT first_name), COUNT(DISTINCT last_name)
+       FROM employees
+       WHERE emp_no BETWEEN 10001 AND 10200;
+
+# (first_name, last_name)의 조합이 유니크한 값의 개수를 세서 조회
+mysql> SELECT COUNT(DISTINCT first_name, last_name)
+       FROM employees
+       WHERE emp_no BETWEEN 10001 AND 10200;
+```
