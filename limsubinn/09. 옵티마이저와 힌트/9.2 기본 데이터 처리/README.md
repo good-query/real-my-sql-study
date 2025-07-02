@@ -655,3 +655,91 @@ mysql> SELECT COUNT(DISTINCT first_name, last_name)
 
 `COUNT(DISTINCT ...)`에서 생성되는 임시 테이블은 SQL 실행 엔진의 내부 집계 처리 단계에서 발생하기 때문에, <br>
 EXPLAIN에서는 숨겨져 있지만 OPTIMIZER_TRACE에서는 명확히 노출된다. <br>
+
+<br>
+
+### 9.2.6 내부 임시 테이블 활용
+MySQL 엔진이 스토리지 엔진으로부터 받아온 레코드를 정렬하거나 그루핑할 때는 내부적인 임시 테이블을 사용한다. <br>
+이는 "CREATE TEMPORARY TABLE" 명령으로 만든 임시 테이블과는 다르다. <br>
+일반적으로 MySQL 엔진이 사용하는 임시 테이블은 처음에는 메모리에 생성됐다가 테이블의 크기가 커지면 디스크로 옮겨진다. <br>
+내부적인 가공을 위해 생성되는 임시 테이블은 다른 세션이나 쿼리에서는 볼 수 없으며 사용하는 것도 불가능하다. <br>
+또한, 쿼리의 처리가 완료되면 자동으로 삭제된다. <br>
+
+<br>
+
+#### 1️⃣ 메모리 임시 테이블과 디스크 임시 테이블
+MySQL 8.0 이전까지는 원본 테이블의 스토리지 엔진과 관계없이 <br>
+임시 테이블이 메모리를 사용할 때는 MEMORY 스토리지 엔진을 사용하며, 디스크에 저장될 때는 MyISAM 스토리지 엔진을 사용했다. <br>
+기존 MEMORY 스토리지 엔진은 VARBINARY나 VARCHAR 같은 가변 길이 타입을 지원하지 못하기 때문에 <br>
+임시 테이블이 메모리에 만들어지면 가변 길이 타입의 경우 최대 길이만큼 메모리를 할당해서 사용했다. 이는 메모리 낭비가 심해지는 문제점이 있다. <br>
+또한, MyISAM 스토리지 엔진은 트랜잭션을 지원하지 못한다는 문제점을 안고 있었다. <br>
+
+MySQL 8.0부터는 메모리는 TempTable이라는 스토리지 엔진을 사용하고, 디스크에 저장되는 임시 테이블은 InnoDB 스토리지 엔진을 사용한다. <br>
+가변 길이 타입을 지원하는 TempTable 스토리지 엔진이 도입됐고, 트랜잭션을 지원하는 InnoDB 스토리지 엔진을 사용하도록 개선된 것이다. <br>
+
+MySQL 8.0부터는 `internal_tmp_mem_storage_engine` 시스템 변수를 이용해 <br>
+메모리용 임시 테이블을 MEMORY와 TempTable 중 선택할 수 있게 하는데, 기본값은 TempTable이다. <br>
+또한, TempTable이 최대로 사용 가능한 메모리 공간의 크기는 `temptable_max_ram` 시스템 변수로 제어할 수 있는데, 기본값은 1GB이다. <br>
+
+임시 테이블의 크기가 1GB보다 커지는 경우 MySQL 서버는 메모리의 임시 테이블을 디스크로 기록하게 되는데, <br>
+MMAP 파일로 디스크에 기록, InnoDB 테이블로 기록 중 한 가지의 방법을 선택한다. <br>
+이는 `temptable_use_mmap` 시스템 변수로 설정할 수 있는데, 기본값은 ON이다. <br>
+메모리의 TempTable을 MMAP 파일로 전환하는 것이 오버헤드가 더 적기 때문이다. <br>
+이때 디스크에 생성되는 임시 테이블은 `tmpdir` 시스템 변수에 정의된 디렉터리에 저장된다. <br>
+
+내부 임시 테이블이 메모리에 생성되지 않고 처음부터 디스크 테이블로 생성되는 경우도 있다. <br>
+이때는 `internal_tmp_disk_storage_engine` 시스템 변수에 설정된 스토리지 엔진이 사용되고, 기본값은 InnoDB이다.
+
+<br>
+
+#### 2️⃣ 임시 테이블이 필요한 쿼리
+다음과 같은 패턴의 쿼리는 대표적으로 내부 임시 테이블을 생성하는 케이스다.
+- ORDER BY와 GROUP BY에 명시된 컬럼이 다른 쿼리
+- ORDER BY나 GROUP BY에 명시된 컬럼이 조인의 순서상 첫 번째 테이블이 아닌 쿼리
+- DISTINCT와 ORDER BY가 동시에 쿼리에 존재하는 경우 또는 DISTINCT가 인덱스로 처리되지 못하는 쿼리
+- UNION이나 UNION DISTINCT가 사용된 쿼리(select_type 컬럼이 UNION RESULT인 경우)
+- 쿼리의 실행 계획에서 select_type이 DERIVED인 쿼리
+<br>
+
+어떤 쿼리의 실행 계획에서 임시 테이블을 사용하는지는 Extra 컬럼에 "Using temporary" 메시지가 표시되는지 확인하면 된다. <br>
+하지만 위의 예에서 마지막 3개의 패턴은 "Using temporary" 메시지가 표시되지 않는다. <br>
+첫 번째 ~ 네 번째 쿼리 패턴은 유니크 인덱스를 가지는 내부 임시 테이블이 만들어진다. <br>
+마지막 쿼리 패턴은 유니크 인덱스가 없는 내부 임시 테이블이 생성된다. <br>
+일반적으로 유니크 인덱스가 있는 내부 임시 테이블은 그렇지 않은 쿼리보다 처리 성능이 상당히 느리다. <br>
+
+<br>
+
+#### 3️⃣ 임시 테이블이 디스크에 생성되는 경우
+- UNION이나 UNION ALL에서 SELECT되는 컬럼 중 길이가 512바이트 이상인 크기의 컬럼이 있는 경우
+- GROUP BY나 DISTINCT 컬럼에서 512바이트 이상인 크기의 컬럼이 있는 경우
+- 메모리 임시 테이블의 크기가 (MEMORY 스토리지 엔진에서) tmp_table_size 또는 max_heap_table_size 시스템 변수보다 크거나
+  (TempTable 스토리지 엔진에서) temptable_max_ram 시스템 변수 값보다 큰 경우
+
+> 💡 MySQL 8.0.13 이전까지는 BLOB이나 TEXT 컬럼을 가진 경우, 임시 테이블을 메모리에 생성하지 못하고 디스크에 생성했지만,
+> MySQL 8.0.13 부터는 메모리에 임시 테이블을 생성할 수 있게 개선됐다. (TempTable 스토리지 엔진을 사용하는 경우에만!)
+
+<br>
+
+#### 4️⃣ 임시 테이블 관련 상태 변수
+실행 계획상 "Using temporary"가 표시되면 임시 테이블을 사용했다는 사실을 알 수 있지만, <br>
+메모리에서 처리됐는지 디스크에서 처리됐는지 알 수 없으며, 몇 개의 임시 테이블이 사용됐는지도 알 수 없다. <br>
+
+이를 확인하려면 현재 세션의 상태 값을 초기화한 후 SELECT 쿼리를 실행하고, 상태 조회 명령을 실행하면 된다. <br>
+```sql
+# 현재 세션의 상태 값을 초기화
+mysql> FLUSH STATUS;
+
+# SELECT 쿼리
+mysql> SELECT first_name, last_name
+       FROM employees
+       GROUP BY first_name, last_name;
+
+# 상태 조회
+mysql> SHOW SESSION STATUS LIKE 'Created_tmp%';
+```
+
+<img width="249" alt="image" src="https://github.com/user-attachments/assets/0d9618ca-ca4e-4428-980f-ac4bf09e3700" />
+
+- `Created_tmp_tables`: 쿼리의 처리를 위해 만들어진 임시 테이블의 개수 (메모리, 디스크 구분 X)
+- `Created_tmp_disk_tables`: 디스크에 내부 임시 테이블이 만들어진 개수
+- `Created_tmp_files`: 디스크에 생성된 임시 파일의 수
