@@ -15,7 +15,7 @@
 graph TD;
     A[☕ 커피 현황] -->|0 coffees| B[김대영]
     A -->|0 coffees| C[임수빈]
-    A -->|6 coffees| D[전수민]
+    A -->|5 coffees| D[전수민]
     A -->|3 coffees| E[정민호]
 ```
 
