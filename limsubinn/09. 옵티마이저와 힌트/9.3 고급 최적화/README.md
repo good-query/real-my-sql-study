@@ -173,3 +173,120 @@ MySQL 8.0.20 버전부터는 더이상 블록 네스티드 루프 조인은 사�
 ✅ 조인 조건에 인덱스가 없어도 빠른 조인이 가능하다. <br>
 ✅ 해시 테이블 생성으로 인해 메모리 사용량이 크다. <br>
 ✅ 범위 조건(`<`, `>`, `BETWEEN`)에서는 사용할 수 없다. <br>
+
+<br>
+
+#### 9.3.1.3 인덱스 컨디션 푸시다운(index_condition_pushdown)
+MySQL 5.6부터 인덱스 컨디션 푸시다운 기능이 도입되었다. <br>
+
+<br>
+
+**1️⃣ 인덱스 컨디션 푸시다운이 작동하지 않을 때** <br>
+
+```sql
+# 인덱스 컨디션 푸시다운 기능 비활성화
+mysql> SET optimizer_switch='index_condition_pushdown=off';
+```
+
+다음 쿼리에서 `last_name='Action'` 조건은 인덱스를 레인지 스캔으로 사용할 수 있다. <br>
+하지만 `first_name LIKE '%sal'` 조건은 인덱스 레인지 스캔으로 검색해야 할 인덱스의 범위를 좁힐 수 없다. <br>
+그래서 `last_name` 조건은 `ix_lastname_firstname` 인덱스의 특정 범위만 조회할 수 있는 조건이며, <br>
+`first_name LIKE '%sal'` 조건은 데이터를 모두 읽은 후 사용자가 원하는 결과인지 하나씩 비교해보는 조건(체크 조건 or 필터링 조건)으로만 사용된다. <br>
+
+```sql
+mysql> ALTER TABLE employees
+       ADD INDEX is_lastname_firstname (last_name, first_name);
+
+mysql> SELECT * FROM employees
+       WHERE last_name='Action' AND first_name like '%sal';
+```
+
+위 쿼리의 실행 계획을 확인해 보면 Extra 컬럼에 "Using where"가 표시된 것을 확인할 수 있다. <br>
+이는 InnoDB 스토리지 엔진이 읽어서 반환해준 레코드가 인덱스를 사용할 수 없는 WHERE 조건에 일치하는지 검사하는 과정을 의미한다. <br>
+
+<img width="1056" height="69" alt="image" src="https://github.com/user-attachments/assets/e7daf8aa-672d-400c-b72f-6d8bf783928b" /> <br>
+
+그림은 `last_name='Action'` 조건으로 인덱스 레인지 스캔을 하고 테이블의 레코드를 읽은 후, <br>
+`first_name LIKE '%sal'` 조건에 부합되는지 여부를 비교하는 과정이다. <br>
+실제 테이블을 읽어서 3건의 레코드를 가져왔지만 그중 단 1건만 `first_name LIKE '%sal'` 조건에 일치했다. <br>
+만약 `last_name='Action'` 조건에 일치하는 레코드가 10만 건인데, <br>
+그중 단 1건만 `first_name LIKE '%sal'` 조건에 일치했다면 99,999건의 레코드 읽기가 불필요한 작업이 되어버린다. <br>
+
+<img width="519" height="231" alt="image" src="https://github.com/user-attachments/assets/06a4f970-ea00-45e2-9572-7c1642d6c2bd" />
+
+인덱스를 비교하는 작업은 실제 InnoDB 스토리지 엔진이 수행하지만 <br>
+테이블의 레코드에서 first_name 조건을 비교하는 작업은 MySQL 엔진이 수행하는 작업이다. <br>
+그런데 MySQL 5.5까지는 인덱스를 범위 제한 조건으로 사용하지 못하는 first_name 조건은 MySQL 엔진이 스토리지 엔진으로 아예 전달해주지 않았다. <br>
+그래서 스토리지 엔진에서는 불필요한 2건의 테이블 읽기를 수행할 수밖에 없었다. <br>
+
+<br>
+
+**2️⃣ 인덱스 컨디션 푸시다운이 작동할 때** <br>
+
+```sql
+# 인덱스 컨디션 푸시다운 기능 활성화
+mysql> SET optimizer_switch='index_condition_pushdown=on';
+```
+
+MySQL 5.6부터는 인덱스를 범위 제한 조건으로 사용하지 못한다고 하더라도 <br>
+인덱스에 포함된 컬럼의 조건이 있다면 모두 같이 모아서 스토리지 엔진으로 전달할 수 있게 핸들러 API가 개선되었다. <br>
+그래서 인덱스를 이용해 최대한 필터링까지 완료해서 꼭 필요한 레코드 1건에 대해서만 테이블 읽기를 수행할 수 있게 되었다. <br>
+
+<img width="523" height="228" alt="image" src="https://github.com/user-attachments/assets/e0f34b8e-ce0f-4dd0-830f-34df3ccd0891" /> <br>
+
+<img width="1126" height="71" alt="image" src="https://github.com/user-attachments/assets/180dfc43-624c-438d-ad74-3511463e0ae7" /> <br>
+
+<br>
+
+#### 9.3.1.4 인덱스 확장(use_index_extensions)
+InnoDB 스토리지 엔진을 사용하는 테이블에서 세컨더리 인덱스에 자동으로 추가된 프라이머리 키를 활용할 수 있게 할지를 결정하는 옵션이다. <br>
+
+InnoDB 스토리지 엔진은 프라이머리 키를 클러스터링 키로 생성한다. <br>
+그래서 모든 세컨더리 인덱스는 리프 노드에 프라이머리 키 값을 가진다. <br>
+
+다음과 같이 프라이머리 키와 세컨더리 인덱스를 가진 테이블을 가정해보자. <br>
+
+```sql
+mysql> CREATE TABLE dept_emp (
+         emp_no INT NOT NULL,
+         dept_no CHAR(4) NOT NULL,
+         from_date DATE NOT NULL,
+         to_date DATE NOT NULL,
+         PRIMARY KEY (dept_no, emp_no),
+         KEY ix_fromdate (from_date)
+       ) ENGINE=InnoDB;
+```
+
+dept_emp 테이블에서 프라이머리 키는 (dept_no, emp_no) 이며, 세컨더리 인덱스는 from_date 컬럼만 포함한다. <br>
+그런데 세컨더리 인덱스는 데이터 레코드를 찾아가기 위해 프라이머리 키인 dept_no와 emp_no 컬럼을 순서대로 포함한다. <br>
+그래서 최종적으로 ix_fromdate 인덱스는 (from_date, dept_no, emp_no) 조합으로 인덱스를 생성한 것과 흡사하게 작동할 수 있게 된다. <br>
+
+예전 MySQL 버전에서는 다음과 같은 쿼리가 세컨더리 인덱스의 마지막에 자동 추가되는 프라이머리 키를 제대로 활용하지 못했지만 <br>
+옵티마이저는 ix_fromdate 인덱스의 마지막에 (dept_no, emp_no) 컬럼이 숨어있다는 것을 인지하고 실행 계획을 수립하도록 개선됐다. <br>
+
+```sql
+mysql> EXPLAIN SELECT COUNT(*) FROM dept_emp WHERE from_date='1987-07-25' AND dept_no='d001';
+```
+<img width="1133" height="68" alt="image" src="https://github.com/user-attachments/assets/173c0037-ba83-4989-afe4-c366e5a91bb8" /> <br>
+
+실행 계획의 key_len 컬럼은 이 쿼리가 인덱스를 구성하는 컬럼 중 어느 부분까지 사용했는지를 바이트 수로 보여주는데, <br>
+19바이트가 표시된 것을 보면 from_date(3바이트), dept_no(16바이트) 까지 사용했다는 것을 알 수 있다. <br>
+
+"dept_no='d001'" 조건을 제거한 쿼리의 실행 계획에서는 key_len 컬럼에서 from_date 컬럼을 위한 3바이트만 표시된 것을 확인할 수 있다. <br>
+
+```sql
+mysql> EXPLAIN SELECT COUNT(*) FROM dept_emp WHERE from_date='1987-07-25';
+```
+<img width="1033" height="68" alt="image" src="https://github.com/user-attachments/assets/c6434d2e-8a8e-4ac8-97fe-21604ff6758b" /> <br>
+
+InnoDB의 프라이머리 키가 세컨더리 인덱스에 포함되어 있으므로 정렬 작업도 인덱스를 활용해 처리되는 장점도 있다. <br>
+Extra 컬럼에 "Using filesort"가 표시되지 않았다는 것은 <br>
+별도의 정렬 작업 없이 인덱스 순서대로 레코드를 읽기만 함으로써 ORDER BY 조건을 만족했다는 것을 의미한다. <br>
+
+```sql
+mysql> EXPLAIN SELECT COUNT(*) FROM dept_emp WHERE from_date='1987-07-25' ORDER BY dept_no;
+```
+<img width="1034" height="69" alt="image" src="https://github.com/user-attachments/assets/754e90fd-f2e3-4e8e-9900-9b00ce5d2f92" />
+
+<br>
+
