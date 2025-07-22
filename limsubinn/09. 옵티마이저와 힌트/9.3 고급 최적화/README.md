@@ -286,7 +286,154 @@ Extra 컬럼에 "Using filesort"가 표시되지 않았다는 것은 <br>
 ```sql
 mysql> EXPLAIN SELECT COUNT(*) FROM dept_emp WHERE from_date='1987-07-25' ORDER BY dept_no;
 ```
-<img width="1034" height="69" alt="image" src="https://github.com/user-attachments/assets/754e90fd-f2e3-4e8e-9900-9b00ce5d2f92" />
+<img width="1034" height="69" alt="image" src="https://github.com/user-attachments/assets/754e90fd-f2e3-4e8e-9900-9b00ce5d2f92" /> <br>
 
 <br>
 
+#### 9.3.1.5 인덱스 머지(index_merge)
+인덱스를 이용해 쿼리를 실행하는 경우, 대부분 옵티마이저는 테이블별로 하나의 인덱스만 사용하도록 실행 계획을 수립한다. <br>
+하지만 인덱스 머지 실행 계획을 사용하면 하나의 테이블에 대해 2개 이상의 인덱스를 이용해 쿼리를 처리한다. <br>
+
+쿼리에서 한 테이블에 대한 WHERE 조건이 여러 개 있더라도 하나의 인덱스에 포함된 컬럼에 대한 조건만으로 인덱스를 검색하고 <br>
+나머지 조건은 읽어온 레코드에 대해서 체크하는 형태로만 사용되는 것이 일반적이다. <br>
+이처럼 하나의 인덱스만 사용해서 작업 범위를 충분히 줄일 수 있는 경우라면 테이블별로 하나의 인덱스만 활용하는 것이 효율적이다. <br>
+
+하지만 쿼리에 사용된 각각의 조건이 서로 다른 인덱스를 사용할 수 있고 그 조건을 만족하는 레코드 건수가 많을 것으로 예상될 때 <br>
+MySQL 서버는 인덱스 머지 실행 계획을 선택한다. <br>
+
+- `index_merge_intersection`
+- `index_merge_sort_union`
+- `index_merge_union`
+
+세 가지 실행 계획 모두 여러 개의 인덱스를 통해 결과를 가져온다는 것은 동일하지만 <br>
+각각의 결과를 어떤 방식으로 병합할지에 따라 구분된다. <br>
+index_merge 옵티마이저 옵션은 3개의 최적화 옵션을 한 번에 모두 제어할 수 있는 옵션이다. <br>
+
+<br>
+
+#### 9.3.1.6 인덱스 머지 - 교집합(index_merge_intersection)
+다음 쿼리는 2개의 WHERE 조건을 가지고 있는데, <br>
+employees 테이블의 first_name 컬럼과 emp_no 컬럼 모두 각각의 인덱스(ix_firstname, PRIMARY)를 가지고 있다. <br>
+즉, 2개 중 어떤 조건을 사용하더라도 인덱스를 사용할 수 있다. <br>
+그에 따라 옵티마이저는 ix_firstname과 PRIMARY 키를 모두 사용해서 쿼리를 처리하기로 결정한다. <br>
+
+```sql
+mysql> EXPLAIN SELECT *
+       FROM EMPLOYEES
+       WHERE first_name='Georgi' AND emp_no BETWEEN 10000 AND 20000;
+```
+
+<img width="1356" height="69" alt="image" src="https://github.com/user-attachments/assets/5bad4376-1fc5-4833-87bc-fed1164a015b" /> <br>
+
+실행 계획의 Extra 컬럼에 "Using intersect"라고 표시된 것은 이 쿼리가 여러 개의 인덱스를 각각 검색해서 그 결과의 교집합만 반환했다는 것을 의미한다. <br>
+
+first_name 컬럼의 조건과 emp_no 컬럼의 조건 중 하나라도 충분히 효율적으로 쿼리를 처리할 수 있었다면 <br>
+옵티마이저는 2개의 인덱스를 모두 사용하는 실행 계획을 사용하지 않았을 것이다. <br>
+즉, 옵티마이저가 각각의 조건에 일치하는 레코드 건수를 예측해 본 결과, 두 조건 모두 상대적으로 많은 레코드를 가져와야 한다는 것을 알게 된 것이다. <br>
+
+```sql
+# 결과 -> 53건
+mysql> SELECT COUNT(*) FROM employees WHERE first_name='Georgi';
+
+# 결과 -> 10000건
+mysql> SELECT COUNT(*) FROM employees WHERE emp_no BETWEEN 10000 AND 20000;
+```
+
+인덱스 머지 실행 계획이 아니었다면 다음 2가지 방식으로 처리해야 했을 것이다. <br>
+
+1. "first_name='Georgi'" 조건만 인덱스를 사용했다면 일치하는 레코드 253건을 검색한 다음 데이터 페이지에서 레코드를 찾고
+   emp_no 컬럼의 조건에 일치하는 레코드들만 반환하는 형태로 처리
+2. "emp_no BETWEEN 10000 AND 20000" 조건만 인덱스를 사용했다면 프라이머리 키를 이용해 10,000건을 읽어와서
+   "first_name='Georgi'" 조건에 일치하는 레코드만 반환하는 형태로 처리
+
+```sql
+# 결과 -> 14건
+mysql> SELECT COUNT(*) FROM employees
+       WHERE first_name='Georgi' AND emp_no BETWEEN 10000 AND 20000;
+```
+
+실제 두 조건을 모두 만족하는 레코드 건수는 14건밖에 안 된다. <br>
+따라서 하나의 인덱스만 사용하는 작업은 비효율이 매우 큰 상황이어서 옵티마이저는 각 인덱스를 검색해 두 결과의 교집합만 찾아서 반환한 것이다. <br>
+
+그런데 ix_firstname 인덱스는 프라이머리 키인 emp_no 컬럼을 자동으로 포함하고 있기 때문에 <br>
+그냥 ix_firstname 인덱스만 사용하는 것이 더 성능이 좋을 것으로 생각할 수도 있다. <br>
+그렇다면 index_merge_intersection 최적화를 비활성화하면 된다. <br>
+
+```sql
+# MySQL 서버 전체적으로 index_merge_intersection 최적화 비활성화
+mysql> SET GLOBAL optimizer_switch='index_merge_intersection=off';
+
+# 현재 커넥션에 대해 index_merge_intersection 최적화 비활성화
+mysql> SET SESSION optimizer_switch='index_merge_intersection=off';
+
+# 현재 쿼리에서만 index_merge_intersection 최적화 비활성화
+mysql> EXPLAIN
+       SELECT /*+ SET_VAR(optimizer_switch='index_merge_intersection=off') */ *
+       FROM employees
+       WHERE first_name='Georgi' AND emp_no BETWEEN 10000 AND 20000;
+```
+
+<img width="1059" height="69" alt="image" src="https://github.com/user-attachments/assets/a472135e-1b1b-4326-b313-b9e4ef9077c5" /> <br>
+
+#### 9.3.1.7 인덱스 머지 - 합집합(index_merge_union)
+인덱스 머지의 'Using union'은 WHERE 절에 사용된 2개 이상의 조건이 <br>
+각각의 인덱스를 사용하되 OR 연산자로 연결된 경우에 사용되는 최적화다. <br>
+
+```sql
+mysql> SELECT *
+       FROM employees
+       WHERE first_name='Matt' OR hire_date='1987-03-31';
+```
+
+위의 예제 쿼리는 2개의 조건이 OR로 연결되어 있다. <br>
+employees 테이블에는 first_name 컬럼과 hire_date 컬럼에 각각 ix_firstname 인덱스와 ix_hiredate 인덱스가 있다. <br>
+그래서 first_name='Matt'인 조건과 hire_date='1987-03-01' 조건이 각각의 인덱스를 사용할 수 있다. <br>
+이 쿼리의 실행 계획은 다음과 같이 'Using union' 최적화를 사용한다. <br>
+
+<img width="1416" height="71" alt="image" src="https://github.com/user-attachments/assets/0fdc52ae-476b-4816-9504-9af6427c2b4a" /> <br>
+
+쿼리의 실행 계획에서 Extra 컬럼에 "Using union(ix_firstname, ix_hiredate)"라고 표시됐는데, <br>
+이는 인덱스 머지 최적화가 ix_firstname 인덱스의 검색 결과와 ix_hiredate 인덱스 검색 결과를 'Union' 알고리즘으로 병합했다는 것을 의미한다. <br>
+
+예제로 살펴본 쿼리에서 first_name='Matt'이면서 hire_date='1987-03-01'인 사원이 있었다면 <br>
+그 사원의 정보는 ix_firstname 인덱스를 검색한 결과와 ix_hiredate 인덱스를 검색한 결과에 모두 포함되어 있었을 것이다. <br>
+하지만 이 쿼리의 결과에서는 그 사원의 정보가 두 번 출력되지는 않는다. <br>
+그렇다면 MySQL 서버는 어떻게 중복 제거를 수행했을까? <br>
+
+<img width="500" alt="image" src="https://github.com/user-attachments/assets/4f28b8b8-5fa4-40c1-825b-3fd5360006a6" /> <br>
+
+MySQL 서버는 first_name 조건을 검색한 결과와 hire_date 컬럼을 검색한 결과가 프라이머리 키로 이미 각각 정렬되어 있다는 것을 이미 알고 있다. <br>
+그래서 두 집합에서 하나씩 가져와서 서로 비교하면서 프라이머리 키인 emp_no 컬럼의 값이 중복된 레코드들을 정렬 없이 걸러낼 수 있다. <br>
+이렇게 정렬된 두 집합의 결과를 하나씩 가져와 중복 제거를 수행할 때 사용된 알고리즘을 우선순위 큐라고 한다. <br>
+
+2개의 조건이 AND로 연결된 경우에는 두 조건 중 하나라도 인덱스를 사용할 수 있으면 인덱스 레인지 스캔으로 쿼리가 실행된다. <br>
+하지만 OR 연산자로 연결된 경우에는 둘 중 하나라도 제대로 인덱스를 사용하지 못하면 항상 풀 테이블 스캔으로밖에 처리하지 못한다. <br>
+
+<br>
+
+#### 9.3.1.8 인덱스 머지 - 정렬 후 합집합(index_merge_sort_union)
+인덱스 머지 작업을 하는 도중에 결과의 정렬이 필요한 경우 MySQL 서버는 인덱스 머지 최적화의 'Sort union' 알고리즘을 사용한다. <br>
+
+```sql
+mysql> EXPLAIN
+         SELECT * FROM employees
+         WHERE first_name='Matt'
+               OR hire_date BETWEEN '1987-03-01' AND '1987-03-31';
+```
+
+위의 예제 쿼리를 다음과 같이 2개의 쿼리로 분리해서 생각해보자. <br>
+
+```sql
+mysql> SELECT * FROM employees WHERE first_name='Matt';
+mysql> SELECT * FROM employees WHERE hire_date BETWEEN '1987-03-01' AND '1987-03-31';
+```
+
+첫 번째 쿼리는 결과가 emp_no로 정렬되어 출력되지만, <br>
+두 번째 쿼리는 범위 조건이기 때문에 인덱스 스캔 시 같은 hire_date 값을 가진 여러 row가 있을 수 있고, 그 안에서의 emp_no 순서는 보장되지 않는다. <br>
+즉, 위 예제의 결과에서는 중복을 제거하기 위해 우선순위 큐를 사용하는 것이 불가능하다. <br>
+그래서 MySQL 서버는 두 집합의 결과에서 중복을 제거하기 위해 각 집합을 emp_no 컬럼으로 정렬한 다음 중복 제거를 수행한다. <br>
+
+<img width="1448" height="70" alt="image" src="https://github.com/user-attachments/assets/8291ddbc-1861-4ba6-9ce4-61ab631f8378" /> <br>
+
+이처럼 인덱스 머지 최적화에서 중복 제거를 위해 강제로 정렬을 수행해야 하는 경우에는 <br>
+실행 계획의 Extra 컬럼에 "Using sort_union" 문구가 표시된다. <br>
