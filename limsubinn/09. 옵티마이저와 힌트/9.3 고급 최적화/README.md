@@ -437,3 +437,191 @@ mysql> SELECT * FROM employees WHERE hire_date BETWEEN '1987-03-01' AND '1987-03
 
 이처럼 인덱스 머지 최적화에서 중복 제거를 위해 강제로 정렬을 수행해야 하는 경우에는 <br>
 실행 계획의 Extra 컬럼에 "Using sort_union" 문구가 표시된다. <br>
+
+<br>
+
+#### 9.3.1.9 세미 조인(semijoin)
+다들 테이블과 실제 조인을 수행하지는 않고, 단지 다른 테이블에서 조건에 일치하는 레코드가 있는지 없는지만 체크하는 형태의 쿼리이다. <br>
+
+<br>
+
+다음 쿼리는 세미 조인의 대표적인 예시이다. <br>
+
+```sql
+mysql> SELECT *
+       FROM employees e
+       WHERE e.emp_no IN
+             (SELECT de.emp_no FROM dept_emp de WHERE de.from_date='1995-01-01');
+```
+
+MySQL 서버에서 세미 조인 최적화 기능이 없었을 때는 실행 계획이 다음과 같았다. <br>
+
+<img width="1028" height="82" alt="image" src="https://github.com/user-attachments/assets/e75b2295-488f-4974-845e-c2f13686e8fd" /> <br>
+
+employees 테이블을 풀 스캔하면서 한 건 한 건 서브쿼리의 조건에 일치하는지 비교했다. <br>
+대략 57건만 읽으면 될 쿼리를 30만 건 넘게 읽어 처리되었다. <br>
+
+<br>
+
+`= (subquery)` 형태와 `IN (subquery)` 형태의 **세미 조인 쿼리**에 대해 3가지 최적화 방법을 적용할 수 있다. <br>
+- 세미 조인 최적화
+- IN-to-EXISTS 최적화
+- MATERIALIZATION 최적화
+
+<br>
+
+`<> (subquery)` 형태와 `NOT IN (subquery)` 형태의 **안티 세미 조인 쿼리**에 대해 2가지 최적화 방법이 있다.
+- IN-to-EXISTS 최적화
+- MATERIALIZATION 최적화
+
+<br>
+
+MySQL 서버 8.0부터 세미 조인 쿼리의 성능을 개선하기 위해 다음의 최적화 전략이 있다. <br>
+- Table Pull-out
+- Dulicate Weed-out
+- First Match
+- Loose Scan
+- Materialzation
+
+<br>
+
+쿼리에 사용되는 테이블과 조인 조건의 특성에 따라 MySQL 옵티마이저는 사용 가능한 전략들을 선별적으로 사용한다. <br>
+
+Table Pull-out 최적화 전략은 사용 가능하면 항상 세민 조인보다 좋은 성능을 내기 때문에 별도로 제어하는 옵티마이저 옵션을 제공하지 않는다. <br>
+그리고 firstmatch(First Match), loosescan(Loose Scan) 옵티마이저 옵션으로 사용 여부를 결정할 수 있고, <br>
+materialization(Duplicate Weed-out, Materialization) 옵티마이저 스위치로 사용 여부를 선택할 수 있다. <br>
+
+`optimizer_switch` 시스템 변수의 `semijoin` 옵티마이저 옵션은 firstmatch, lossescan, materialization 옵션을 한 번에 활성화/비활성화할 때 사용한다. <br>
+
+<br>
+
+#### 9.3.1.10 테이블 풀-아웃(Table Pull-out)
+세미 조인의 서브쿼리에 사용된 테이블을 아우터 쿼리로 끄집어낸 후에 쿼리를 조인 쿼리로 재작성하는 형태의 최적화다. <br>
+
+```sql
+mysql> EXPLAIN
+       SELECT * FROM employees e
+       WHERE e.emp_no IN (SELECT de.emp_no FROM dept_emp de WHERE de.dept_no='d009');
+```
+
+<img width="1081" height="85" alt="image" src="https://github.com/user-attachments/assets/64d9d274-f34e-4dd0-822d-5e590dadf09f" /> <br>
+
+해당 실행 계획에서 dept_emp 테이블과 employees 테이블이 순서대로 표시되어 있는데, 가장 중요한 것은 id 컬럼의 값이 모두 1이라는 것이다. <br>
+Table pullout 최적화는 별도로 실행 계획의 Extra 컬럼에 "Using table pullout"과 같은 문구가 출력되지 않는다. <br>
+그래서 실행 계획에서 해당 테이블들의 id 컬럼 값이 같은지 다른지를 비교해보는 것이 Table pullout 최적화가 사용됐는지를 확인하는 가장 간단한 방법이다. <br>
+더 정확하게 확인하는 방법은 `EXPLAIN` 명령을 실행한 직후 `SHOW WARNINGS` 명령으로 MySQL 옵티마이저가 재작성한 쿼리를 살펴보는 것이다. <br>
+
+<img width="785" height="144" alt="image" src="https://github.com/user-attachments/assets/5e59cddf-bb3b-4703-87ce-7f6a5a6f6959" /> <br>
+
+이 쿼리를 보면 IN(subquery) 형태는 사라지고, JOIN으로 쿼리가 재작성된 것을 확인할 수 있다. <br>
+
+Table pullout 최적화의 몇 가지 제한 사항과 특성이 있다. <br>
+- 세미 조인 서브쿼리에서만 사용 가능하다.
+- 서브쿼리 부분이 UNIQUE 인덱스나 프라이머리 키 룩업으로 결과가 1건인 경우에만 사용할 수 있다.
+- Table pullout이 적용된다고 하더라도 기존 쿼리에서 가능했던 최적화 방법이 사용 불가능한 것은 아니므로
+  MySQL에서는 가능하다면 Table pullout 최적화를 최대한 적용한다.
+- 서브쿼리의 테이블을 아우터 쿼리로 가져와서 조인으로 풀어쓰는 최적화를 수행하는데,
+  만약 서브쿼리의 모든 테이블이 아우터 쿼리로 끄집어 낼 수 있다면 서브쿼리 자체는 없어진다.
+- MySQL에서는 "최대한 서브쿼리를 조인으로 풀어서 사용해라"라는 튜닝 가이드가 많은데,
+  Table pullout 최적화는 이 가이드를 그대로 실행하는 것이다.
+
+<br>
+
+#### 9.3.1.11 퍼스트 매치(firstmatch)
+IN(subquery) 형태의 세미 조인을 EXISTS(subquery) 형태로 튜닝한 것과 비슷한 방법으로 실행된다. <br>
+
+```sql
+mysql> EXPLAIN SELECT *
+       FROM employees e WHERE e.first_name='Matt'
+            AND e.emp_no IN (SELECT t.emp_no FROM titles t WHERE t.from_date BETWEEN '1995-01-01' AND '1995-01-30');
+```
+
+<img width="1245" height="86" alt="image" src="https://github.com/user-attachments/assets/f66b31fa-d2f3-41b8-ae0d-f5666c70d765" /> <br>
+
+id 컬럼의 값이 모두 1로 표시된 것으로 봐서 titles 테이블이 서브쿼리 패턴으로 실행되지 않고, 조인으로 처리됐다는 것을 알 수 있다. <br>
+또한, Extra 컬럼의 "FirstMatch(e)" 문구는 employees 테이블의 레코드에 대해 titles 테이블에 일치하는 레코드 1건만 찾으면 <br>
+더이상의 titles 테이블 검색을 하지 않는다는 것을 의미한다. EXISTS(subquery)와 동일하게 처리된 것이다. <br>
+하지만 FirstMatch는 서브쿼리가 아니라 조인으로 풀어서 실행하면서 일치하는 첫 번째 레코드만 검색하는 최적화를 실행한 것이다. <br>
+
+<img width="800" alt="image" src="https://github.com/user-attachments/assets/448fe8d3-eb6e-4c8c-9882-9f132e8089c3" /> <br>
+
+1. employees 테이블에서 first_name 컬럼의 값이 'Matt'인 사원의 정보를 ix_firstname 인덱스를 이용해 레인지 스캔으로 읽은 결과가 위의 그림 왼쪽에 있는 employees 테이블이다.
+2. first_name이 'Matt'이고 사원 번호가 12302인 레코드를 titles 테이블과 조인해서 titles 테이블의 from_date가 "t.from_date BETWEEN '1995-01-01' AND '1995-01-30'" 조건을 만족하는 레코드를 찾아본다.
+3. 12302번 사원은 from_date 조건을 만족하는 레코드가 없으므로 사용자에게 반환되는 결과는 없다.
+4. 243075번 사원의 레코드를 읽어 titles 테이블과 조인하고 조인된 titles 레코드 중 from_date 조건을 만족하는지 검사한다.
+5. 이때 일치하는 첫 번째 레코드를 찾았기 때문에 243075번 사원에 대해서는 더이상 titles 테이블을 검색하지 않고 즉시 사원 번호가 243075인 레코드를 최종 결과로 반환한다.
+
+<br>
+
+FirstMatch 최적화는 MySQL 5.5에서 수행했던 IN-to-EXISTS 변환과 비슷한 처리 로직을 수행하는데, 그에 비해 다음과 같은 장점이 있다. <br>
+- 가끔 여러 테이블이 조인되는 경우 원래 쿼리에는 없던 동등 조건을 옵티마이저가 자동으로 추가하는 형태의 최적화가 실행되기도 한다.
+- 서브쿼리의 모든 테이블에 대해 FirstMatch 최적화를 수행할지 혹은 일부 테이블에 대해서만 수행할지 취사선택할 수 있다.
+
+<br>
+
+FirstMatch 최적화의 몇 가지 제한 사항과 특성이 있다. <br>
+- 서브쿼리에서 하나의 레코드만 검색되면 더이상의 검색을 멈추는 단축 실행 경로이기 때문에, FirstMatch 최적화에서 서브쿼리는 그 서브쿼리가 참조하는 모든 아우터 테이블이 먼저 조회된 이후 실행된다.
+- 실행 계획의 Extra 컬럼에 "FirstMatch(table-N)" 문구가 표시된다.
+- 상관 서브쿼리(Correlated subquery)에서도 사용될 수 있다.
+- GROUP BY나 집합 함수가 사용된 서브쿼리의 최적화에 사용될 수 없다.
+
+<br>
+
+#### 9.3.1.12 루스 스캔(loosescan)
+"Using index for group-by"의 루스 인덱스 스캔과 비슷한 읽기 방식을 사용한다. <br>
+
+```sql
+mysql> EXPLAIN
+       SELECT * FROM departments d WHERE d.dept_no IN (SELECT de.dept_no FROM dept_emp de);
+```
+
+departments 테이블의 레코드 건수는 9건밖에 되지 않지만 dept_emp 테이블의 레코드 건수는 33만 건 가까이 저장되어 있다. <br>
+그런데 dept_emp 테이블에는 (dept_no + emp_no) 컬럼의 조합으로 프라이머리 키 인덱스가 만들어져 있다. <br>
+그리고 이 프라이머리 키는 전체 레코드 수는 33만 건 정도 있지만 dept_no 만으로 그루핑해서 보면 결국 9건밖에 없다는 것을 알 수 있다. <br>
+그렇다면 dept_emp 테이블의 프라이머리 키를 루스 인덱스 스캔으로 유니크한 dept_no만 읽으면 아주 효율적으로 서브쿼리 부분을 실행할 수 있다. <br>
+
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/fab8b1eb-720b-4b74-8a36-9f7d0aade541" /> <br>
+
+서브쿼리에 사용된 dept_emp 테이블이 드라이빙 테이블로 실행되며, dept_emp 테이블의 프라이머리 키를 dept_no 부분에서 유니크하게 한 건씩만 읽고 있다. <br>
+루스 인덱스 스캔의 "Using index for group-by"도 위 그림에 표현된 dept_emp 테이블의 프라이머리 키를 읽는 방식과 동일하게 작동한다. <br>
+
+<img width="1104" height="81" alt="image" src="https://github.com/user-attachments/assets/cff1de22-605f-4ff0-9a41-b2aca652ee6a" /> <br>
+
+LooseScan 최적화는 다음과 같은 특성을 가진다. <br>
+- 루스 인덱스 스캔으로 서브쿼리 테이블을 읽고, 그 다음으로 아우터 테이블을 드리븐으로 사용해서 조인을 수행한다.
+  그래서 서브쿼리 부분이 루스 인덱스 스캔을 사용할 수 있는 조건이 갖춰져야 사용할 수 있는 최적화다.
+  다음과 같은 형태의 서브쿼리들에서 사용할 수 있다.
+  ```sql
+  SELECT .. FROM .. WHERE expr IN (SELECT keypart1 FROM tab WHERE ...)
+  SELECT .. FROM .. WHERE expr IN (SELECT keypart2 FROM tab WHERE keypart1='상수' ...)
+  ```
+
+<br>
+
+#### 9.3.1.13 구체화(Materialization)
+세미 조인에 사용된 서브쿼리를 통째로 구체화해서 쿼리를 최적화한다. 쉽게 표현하면 내부 임시 테이블을 생성한다는 것을 의미한다. <br>
+
+```sql
+mysql> EXPLAIN
+       SELECT * FROM employees e
+       WHERE e.emp_no IN (SELECT de.emp_no FROM dept_emp de WHERE de.from_date='1995-01-01');
+```
+
+<img width="1164" height="94" alt="image" src="https://github.com/user-attachments/assets/618d4aa9-ea11-4aac-b413-a8c59d20e2b1" /> <br>
+
+마지막 라인의 selected_type 컬럼에 "MATERIALIZED"라고 표시됐다. <br>
+이 쿼리에서 사용하는 테이블은 2개인데 실행 계획은 3개 라인이 출력된 것으로 보아 임시 테이블이 생성됐다는 것을 짐작할 수 있다. <br>
+dept_emp 테이블을 읽는 서브쿼리가 먼저 실행되어 그 결과로 임시 테이블(<subquery2>)이 만들어졌다. <br>
+그리고 최종적으로 서브쿼리가 구체화된 임시 테이블과 employees 테이블을 조인해서 결과를 반환한다. <br>
+
+Materialization 최적화는 다른 서브쿼리 최적화와는 달리, 서브쿼리 내에 GROUP BY 절이 있어도 사용할 수 있다. <br>
+```sql
+mysql> EXPLAIN
+       SELECT * FROM employees e
+       WHERE e.emp_no IN (SELECT de.emp_no FROM dept_emp de WHERE de.from_date='1995-01-01' GROUP BY de.dept_no);
+```
+
+Materialization 최적화의 몇 가지 제한 사항과 특성이 있다. <br>
+- IN(subquery)에서 서브쿼리는 상관 서브쿼리(Correlated subquery)가 아니어야 한다.
+- 서브쿼리는 GROUP BY나 집합 함수들이 사용되어도 구체화를 사용할 수 있다.
+- 구체화가 사용된 경우 내부 임시 테이블이 사용된다.
