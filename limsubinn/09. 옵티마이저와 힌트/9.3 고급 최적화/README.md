@@ -625,3 +625,138 @@ Materialization 최적화의 몇 가지 제한 사항과 특성이 있다. <br>
 - IN(subquery)에서 서브쿼리는 상관 서브쿼리(Correlated subquery)가 아니어야 한다.
 - 서브쿼리는 GROUP BY나 집합 함수들이 사용되어도 구체화를 사용할 수 있다.
 - 구체화가 사용된 경우 내부 임시 테이블이 사용된다.
+
+<br>
+
+#### 9.3.1.14 중복 제거(Duplicated Weed-out)
+세미 조인 서브쿼리를 일반적인 `INNER JOIN` 쿼리로 바꿔서 실행하고 마지막에 중복된 레코드를 제거하는 방법으로 처리되는 최적화 알고리즘이다. <br>
+
+```sql
+mysql> EXPLAIN
+       SELECT * FROM employees e
+       WHERE e.emp_no IN (SELECT s.emp_no FROM salaries s WHERE s.salary>150000);
+```
+
+위의 예제 쿼리에서 salaries 테이블의 프라이머리 키가 (emp_no + from_date)이므로 <br>
+salary가 15000 이상인 레코드를 salaries 테이블에서 조회하면 그 결과에는 중복된 emp_no가 발생할 수 있다. <br>
+그래서 다음과 같이 쿼리를 `GROUP BY` 절을 넣어 재작성해주면 세미 조인 서브쿼리와 동일한 결과를 얻을 수 있다. <br>
+
+```sql
+mysql> SELECT e.*
+       FROM employees e, salaries s
+       WHERE e.emp_no=s.emp_no AND s.salary>15000
+       GROUP BY e.emp_no;
+```
+
+Duplicate Weedout 최적화 알고리즘은 원본 쿼리를 위와 같이 INNER JOIN + GROUP BY 절로 바꿔 실행하는 것과 동일하게 쿼리를 처리한다. <br>
+
+1. salaries 테이블의 ix_salary 인덱스를 스캔해서 salary가 15000보다 큰 사원을 검색해 employees 테이블 조인을 실행
+2. 조인된 결과를 임시 테이블에 저장
+3. 임시 테이블에 저장된 결과에서 emp_no 기준으로 중복 제거
+4. 중복을 제거하고 남은 레코드를 최종적으로 반환
+
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/7a732a8d-f6d2-4596-82a1-fdae97d78b57" /> <br>
+
+Duplicate Weedout 최적화를 이용한 예제 쿼리의 실행 계획은 다음과 같다. <br>
+
+<img width="1231" height="80" alt="image" src="https://github.com/user-attachments/assets/c51a1d6f-5c09-4784-9069-323e33abc7ea" /> <br>
+
+"Duplicate Weedout"이라는 문구가 별도로 표시되지는 않고, Extra 컬럼에 "Start temporary"와 "End temporary" 문구가 표시된다. <br>
+1번에서 조인을 수행하는 작업과 2번에서 임시 테이블로 저장하는 작업은 반복적으로 실행되는 과정이다. <br>
+이 반복 과정이 시작되는 테이블의 실행 계획 라인에는 "Start temporary" 문구가, <br>
+그리고 반복 과정이 끝나는 테이블의 실행 계획 라인에는 "End temporary" 문구가 표시된다. <br>
+따라서 두 문구의 구간이 Duplicate Weedout 최적화의 처리 과정이라고 보면 된다. <br>
+
+Duplicate Weedout 최적화는 다음과 같은 장점과 제약 사항이 있다.
+- 서브쿼리가 상관 서브쿼리라고 하더라도 사용할 수 있는 최적화다.
+- 서브쿼리가 GROUP BY나 집합 함수가 사용된 경우에는 사용될 수 없다.
+- Duplicate Weedout은 서브쿼리의 테이블을 조인으로 처리하기 때문에 최적화할 수 있는 방법이 많다.
+
+<br>
+
+#### 9.3.1.15 컨디션 팬아웃(condition_fanout_filter)
+MySQL 옵티마이저는 여러 테이블이 조인되는 경우 가능하다면 일치하는 레코드 건수가 적은 순서대로 조인을 실행한다. <br>
+
+```sql
+mysql> SELECT * FROM employees e
+       INNER JOIN salaries s ON s.emp_no=e.emp_no
+       WHERE e.first_name='Matt' AND e.hire_date BETWEEN '1985-11-21' AND '1986-11-21';
+```
+
+<img width="1133" height="82" alt="image" src="https://github.com/user-attachments/assets/997d0efe-f1a3-4b39-bb3c-fe29e4249c72" /> <br>
+
+위의 실행 계획은 condition_fanout_filter 옵티마이저 옵션을 비활성화한 상태에서 실행한 것이다. <br>
+실행 계획에 의하면 이 쿼리는 다음과 같은 절차를 거쳐 처리된다는 것을 알 수 있다. <br>
+
+1. employees 테이블에서 ix_firstname 인덱스를 이용해 first_name='Matt' 조건에 일치하는 233건의 레코드 검색
+2. 검색된 233건의 레코드 중 hire_date가 '1985-11-21'부터 '1986-11-21' 사이인 레코드만 걸러내는데,
+   이 실행 계획에서는 filtered 컬럼 값이 100인 것은 옵티마이저가 233건 모두 hire_date 컬럼의 조건을 만족할 것으로 예측했다는 것을 의미한다.
+3. employees 테이블을 읽은 결과 233건에 대해 salaries 테이블의 프라이머리 키를 이용해 salaries 테이블의 레코드를 읽는다.
+   이때 MySQL 옵티마이저는 employees 테이블의 레코드 한 건당 salaries 테이블의 레코드 9건이 일치할 것으로 예상했다.
+
+여기서 중요한 것은 employees 테이블의 row 컬럼의 값이 233이고, filtered 컬럼의 값이 100%라는 것이다. <br>
+
+<img width="1133" height="82" alt="image" src="https://github.com/user-attachments/assets/d63bd05c-ad7f-483d-974b-fdcd52114668" />
+
+위의 실행 계획은 condition_fanout_filter 옵티마이저 옵션을 활성화한 상태에서 실행한 것이다. <br>
+rows 컬럼의 값은 233으로 동일하지만, filtered 컬럼의 값이 26.03%로 변경됐다. <br>
+MySQL 옵티마이저가 인덱스를 사용할 수 있는 first_name 컬럼 조건 이외의 <br>
+나머지 조건(hire_date 컬럼의 조건)에 대해서도 얼마나 조건을 충족할지 고려했다는 뜻이다. <br>
+
+즉, condition_fanout_filter 최적화가 비활성화된 경우에는 employees 테이블에서 모든 조건을 충족하는 레코드가 233건일 것으로 예측한 반면, <br>
+활성화된 경우에는 employees 테이블에서 60건(233 * 0.2603)만 조건을 충족할 것이라고 예측했다. <br>
+MySQL 옵티마이저가 조건을 만족하는 레코드 건수를 정확하게 예측할 수 있다면 더 빠른 실행 계획을 만들어 낼 수 있는 것이다. <br>
+
+MySQL 8.0 버전에는 condition_fanout_filter 최적화가 활성화되면 <br>
+다음과 같은 조건을 만족하는 컬럼의 조건들에 대해 조건을 만족하는 레코드의 비율을 계산할 수 있다. <br>
+
+1. WHERE 조건절에 사용된 컬럼에 대해 인덱스가 있는 경우
+2. WHERE 조건절에 사용된 컬럼에 대해 히스토그램이 존재하는 경우
+
+예제의 쿼리는 실제 실행되는 경우에는 first_name='Matt' 조건을 위한 ix_firstname 인덱스만 사용한다. <br>
+하지만 실행 계획을 수립하는 경우에는 first_name 컬럼의 인덱스를 이용해 <br>
+first_name='Matt' 조건에 일치하는 레코드 건수가 대략 233건 정도라는 것을 알아내고, <br>
+hire_date 컬럼의 조건을 만족하는 레코드의 비율이 대략 26.03%일 것으로 예측한다. <br>
+employees 테이블의 hire_date 컬럼의 인덱스가 없었다면 <br>
+MySQL 옵티마이저는 first_name 컬럼의 인덱스를 이용해 hire_date 컬럼값의 분포도를 살펴보고 filtered 컬럼의 값을 예측한다. <br>
+
+<br>
+
+#### 9.3.1.16 파생 테이블 머지(derived_merge)
+예전 버전의 MySQL 서버에서는 FROM 절에 사용된 서브쿼리는 먼저 실행해서 그 결과를 임시 테이블로 만든 다음 외부 쿼리 부분을 처리했다. <br>
+
+```sql
+mysql> EXPLAIN
+       SELECT * FROM (
+         SELECT * FROM employees WHERE first_name='Matt'
+       ) derived_table
+       WHERE derived_table.hire_date='1986-04-03';
+```
+
+<img width="1440" height="85" alt="image" src="https://github.com/user-attachments/assets/06f9ff10-66d4-4d92-b236-ab001cb1c6bc" /> <br>
+
+위 쿼리의 실행 계획의 경우, MySQL 서버는 내부적으로 임시 테이블을 생성하고 first_name='Matt'인 레코드를 employees 테이블에서 읽어서 <br>
+임시 테이블로 INSERT한다. 그리고 다시 임시 테이블을 읽으므로 MySQL 서버는 레코드를 복사하고 읽는 오버헤드가 더 추가된다. <br>
+내부적으로 생성되는 임시 테이블은 처음에는 메모리에 생성되지만, 임시 테이블에 저장될 레코드 건수가 많아지면 결국 디스크로 다시 기록되어야 한다. <br>
+그래서 레코드가 많아진다면 임시 테이블로 레코드를 복사하고 읽는 오버헤드로 인해 쿼리의 성능은 많이 느려질 것이다. <br>
+
+MySQL 5.7 버전부터는 derived_merge 최적화 옵션이 도입됐는데, <br>
+이는 파생 테이블로 만들어지는 서브쿼리를 외부 쿼리와 병합해서 서브쿼리 부분을 제거할지 여부를 결정한다. <br>
+
+<img width="1436" height="65" alt="image" src="https://github.com/user-attachments/assets/0bb354f3-ea8a-4e23-86b5-7e81bf3031ba" /> <br>
+
+위의 실행 계획에서는 selected_type 컬럼이 DERIVED였던 라인이 없어지고, <br>
+서브쿼리 없이 employees 테이블을 조회하던 형태의 단순 실행 계획으로 바뀌었다. <br>
+그리고 SHOW WARNINGS 명령으로 MySQL 옵티마이저가 새로 작성한 쿼리를 살펴보면 서브쿼리 부분이 어떻게 외부 쿼리로 병합됐는지 확인할 수 있다. <br>
+
+<img width="1183" height="98" alt="image" src="https://github.com/user-attachments/assets/d3c6b109-04a2-4a7f-ac3c-c415717e9dd3" /> <br>
+
+하지만 모든 쿼리에 대해 옵티마이저가 서브쿼리를 외부 쿼리로 병합할 수 있는 것은 아니다. <br>
+다음과 같은 조건에서는 옵티마이저가 자동으로 서브쿼리를 외부 쿼리로 병합할 수 없게 된다. <br>
+
+- SUM(), MIN(), MAX() 와 같은 집계 함수와 윈도우 함수가 사용된 서브쿼리
+- DISTINCT가 사용된 서브쿼리
+- LIMIT이 사용된 서브쿼리
+- UNION 또는 UNION ALL을 포함하는 서브쿼리
+- SELECT 절에 사용된 서브쿼리
+- 값이 변경되는 사용자 변수가 사용된 서브쿼리
